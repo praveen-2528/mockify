@@ -1,0 +1,325 @@
+.test-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
+
+.test-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--card-border);
+    z-index: 10;
+    border-radius: 0;
+}
+
+.exam-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.exam-info h2 {
+    font-size: 1.25rem;
+    margin: 0;
+}
+
+.format-badge {
+    background: rgba(99, 102, 241, 0.2);
+    color: #a5b4fc;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+
+.timer-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    font-family: monospace;
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.mobile-palette-toggle {
+    display: none;
+}
+
+.test-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
+/* Main Area */
+.question-area {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+    display: flex;
+    justify-content: center;
+}
+
+.question-card {
+    width: 100%;
+    max-width: 800px;
+    height: fit-content;
+    display: flex;
+    flex-direction: column;
+}
+
+.question-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.q-number {
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.q-tag {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.question-text {
+    font-size: 1.25rem;
+    line-height: 1.6;
+    margin-bottom: 2rem;
+}
+
+.options-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.option-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 1rem;
+}
+
+.option-item:hover {
+    background: rgba(30, 41, 59, 0.8);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.option-item.selected {
+    background: rgba(99, 102, 241, 0.15);
+    border-color: var(--primary);
+}
+
+.option-marker {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    margin-right: 1rem;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.option-item.selected .option-marker {
+    background: var(--primary);
+    color: white;
+}
+
+.option-content {
+    flex: 1;
+}
+
+.option-check {
+    color: var(--primary);
+    margin-left: 1rem;
+    animation: fadeIn 0.2s ease;
+}
+
+.test-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: auto;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--card-border);
+    gap: 1rem;
+}
+
+.right-actions {
+    display: flex;
+    gap: 1rem;
+    margin-left: auto;
+}
+
+/* Sidebar Palette */
+.palette-sidebar {
+    width: 320px;
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+    border-left: 1px solid var(--card-border);
+    display: flex;
+    flex-direction: column;
+    background: rgba(11, 15, 25, 0.5);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-radius: 0;
+}
+
+.palette-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--card-border);
+}
+
+.palette-header h3 {
+    margin-bottom: 1rem;
+}
+
+.palette-stats {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.dot.answered {
+    background: var(--success);
+}
+
+.dot.unattempted {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.palette-grid {
+    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.palette-btn {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.palette-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.palette-btn.answered {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: var(--success);
+    color: #34d399;
+}
+
+.palette-btn.review {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: #f59e0b;
+    color: #fcd34d;
+}
+
+.palette-btn.current {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.3);
+}
+
+.palette-footer {
+    padding: 1.5rem;
+    border-top: 1px solid var(--card-border);
+}
+
+.w-full {
+    width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .test-header {
+        padding: 1rem;
+    }
+
+    .mobile-palette-toggle {
+        display: inline-flex;
+    }
+
+    .palette-sidebar {
+        position: fixed;
+        top: 73px;
+        /* Header height approx */
+        right: -320px;
+        bottom: 0;
+        transition: right 0.3s ease;
+        z-index: 20;
+        box-shadow: -10px 0 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .palette-sidebar.show {
+        right: 0;
+    }
+}
+
+@media (max-width: 600px) {
+    .question-area {
+        padding: 1rem;
+    }
+
+    .exam-info h2 {
+        font-size: 1rem;
+    }
+
+    .exam-info .format-badge {
+        display: none;
+    }
+}
