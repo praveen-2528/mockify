@@ -1,13 +1,15 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExam } from '../context/ExamContext';
+import { useRoom } from '../context/RoomContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { CheckCircle, XCircle, ChevronLeft, Award, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, ChevronLeft, Award, Clock, Trophy } from 'lucide-react';
 import './Results.css';
 
 const Results = () => {
-    const { questions, answers, resetExam, testStarted, timeSpent } = useExam();
+    const { questions, answers, resetExam, testStarted, timeSpent, isMultiplayer, roomCode } = useExam();
+    const room = useRoom();
     const navigate = useNavigate();
 
     const formatTime = (seconds) => {
@@ -43,6 +45,7 @@ const Results = () => {
     const percentage = ((score / questions.length) * 100).toFixed(1);
 
     const handleBackHome = () => {
+        if (isMultiplayer) room.leaveRoom();
         resetExam();
         navigate('/');
     };
@@ -54,9 +57,16 @@ const Results = () => {
                     <Award size={28} className="text-primary" />
                     <h2>Test Results Summary</h2>
                 </div>
-                <Button variant="outline" onClick={handleBackHome}>
-                    <ChevronLeft size={16} /> New Test
-                </Button>
+                <div className="results-header-actions">
+                    {isMultiplayer && roomCode && (
+                        <Button variant="primary" onClick={() => navigate('/leaderboard')}>
+                            <Trophy size={16} /> Leaderboard
+                        </Button>
+                    )}
+                    <Button variant="outline" onClick={handleBackHome}>
+                        <ChevronLeft size={16} /> New Test
+                    </Button>
+                </div>
             </header>
 
             <main className="results-content">

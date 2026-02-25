@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useExam } from '../context/ExamContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { BookOpen, GraduationCap, Upload, FileJson, AlertCircle } from 'lucide-react';
+import { BookOpen, GraduationCap, Upload, FileJson, AlertCircle, Users, Folder } from 'lucide-react';
 import './Setup.css';
 
 const Setup = () => {
@@ -226,6 +226,17 @@ const Setup = () => {
                     </div>
                 )}
             </Card>
+
+            <div className="setup-secondary-actions">
+                <button className="secondary-action-btn" onClick={() => navigate('/lobby')}>
+                    <Users size={20} />
+                    <span>Multiplayer Room</span>
+                </button>
+                <button className="secondary-action-btn" onClick={() => navigate('/saved')}>
+                    <Folder size={20} />
+                    <span>Saved Exams</span>
+                </button>
+            </div>
         </div>
     );
 };

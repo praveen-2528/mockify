@@ -14,6 +14,10 @@ export const ExamProvider = ({ children }) => {
         answers: {}, // { questionId: selectedOptionIndex }
         markedForReview: [], // array of question indices marked for review
         timeSpent: [], // array where index is questionIndex and value is seconds spent
+        timeLeft: null, // total time remaining in seconds
+        isMultiplayer: false,
+        roomCode: null,
+        _saveId: null, // for save/resume tracking
     });
 
     const updateExamState = (updates) => {
@@ -30,11 +34,32 @@ export const ExamProvider = ({ children }) => {
             answers: {},
             markedForReview: [],
             timeSpent: [],
+            timeLeft: null,
+            isMultiplayer: false,
+            roomCode: null,
+            _saveId: null,
+        });
+    };
+
+    const loadSavedState = (saved) => {
+        setExamState({
+            examType: saved.examType,
+            testFormat: saved.testFormat,
+            questions: saved.questions,
+            testStarted: true,
+            currentQuestionIndex: saved.currentQuestionIndex || 0,
+            answers: saved.answers || {},
+            markedForReview: saved.markedForReview || [],
+            timeSpent: saved.timeSpent || [],
+            timeLeft: saved.timeLeft,
+            isMultiplayer: false,
+            roomCode: null,
+            _saveId: saved.id,
         });
     };
 
     return (
-        <ExamContext.Provider value={{ ...examState, updateExamState, resetExam }}>
+        <ExamContext.Provider value={{ ...examState, updateExamState, resetExam, loadSavedState }}>
             {children}
         </ExamContext.Provider>
     );
