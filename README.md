@@ -1,6 +1,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=white" />
   <img src="https://img.shields.io/badge/Vite-7.3-646CFF?style=for-the-badge&logo=vite&logoColor=white" />
+  <img src="https://img.shields.io/badge/Socket.IO-4.8-010101?style=for-the-badge&logo=socketdotio&logoColor=white" />
+  <img src="https://img.shields.io/badge/Node.js-Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" />
   <img src="https://img.shields.io/badge/Vanilla_CSS-Glassmorphism-FF6B6B?style=for-the-badge&logo=css3&logoColor=white" />
   <img src="https://img.shields.io/badge/Build-Passing-10B981?style=for-the-badge&logo=checkmarx&logoColor=white" />
   <img src="https://img.shields.io/badge/License-MIT-A78BFA?style=for-the-badge" />
@@ -9,12 +11,13 @@
 <h1 align="center">🎯 Mockify</h1>
 
 <p align="center">
-  <strong>A premium, dynamic mock-test platform built for serious exam preparation.</strong><br/>
-  Glassmorphism UI · BYOD JSON Questions · Real-time Per-Question Analytics · Pause & Blur Anti-Cheat
+  <strong>A premium, multiplayer-ready mock-test platform built for serious exam preparation.</strong><br/>
+  Multiplayer Rooms · Friendly & Exam Modes · Leaderboard · Save & Resume · Glassmorphism UI · BYOD JSON
 </p>
 
 <p align="center">
   <a href="#-features">Features</a> •
+  <a href="#-multiplayer-rooms">Multiplayer</a> •
   <a href="#%EF%B8%8F-tech-stack">Tech Stack</a> •
   <a href="#-quick-start">Quick Start</a> •
   <a href="#-how-it-works">How It Works</a> •
@@ -57,8 +60,48 @@ Kickstart your test session in **3 intuitive steps**:
 - **Color-Coded Review** — Green border for correct, red for incorrect, grey for skipped
 - **Explanations** — Renders the logic/explanation from your JSON for every single question
 
+### 💾 Save & Resume
+- **Save & Exit** — Save your test mid-way and come back later
+- **Auto-Save** — Progress auto-saves every 60 seconds during solo tests
+- **Saved Exams Gallery** — Card grid with progress bars, dates, and one-click resume
+- Stored in localStorage (up to 20 tests, auto-prunes oldest)
+
 ### 📱 Fully Responsive
 Works beautifully on desktop, tablet, and mobile. The question palette slides in as an overlay on smaller screens.
+
+---
+
+## 🏠 Multiplayer Rooms
+
+Create or join rooms over the internet with a **6-character room code** (like Kahoot!). Two modes:
+
+### 🎉 Friendly Mode
+| Step | What Happens |
+|------|--------------|
+| 1 | Everyone sees the **same question** at the same time |
+| 2 | Each player picks an answer — their option **locks** |
+| 3 | Spinner shows "Waiting for others... (2/3)" with live checkmarks |
+| 4 | Once **all players answer** → correct answer is **revealed** |
+| 5 | Shows: ✅/❌ per-option highlights, who picked what, and the explanation |
+| 6 | **Host** clicks "Next Question" to advance everyone |
+
+Perfect for study groups — learn together, discuss each answer!
+
+### 📝 Real Exam Mode
+| Step | What Happens |
+|------|--------------|
+| 1 | Everyone gets the **same shuffled question set** |
+| 2 | Each player takes the test at their **own pace** |
+| 3 | **No answers revealed** until final submission |
+| 4 | After submission → **Leaderboard** ranks everyone |
+
+Perfect for competitive practice — simulate real exam conditions!
+
+### 🏆 Leaderboard
+- **Podium** for top 3 (🥇🥈🥉) with gold/silver/bronze styling
+- **Ranked table**: Score, Correct, Incorrect, Total Time
+- Live refresh while waiting for others to finish
+- Sort by score (desc) → time (asc) for tiebreakers
 
 ---
 
@@ -68,10 +111,13 @@ Works beautifully on desktop, tablet, and mobile. The question palette slides in
 |-------|-----------|
 | **Framework** | React 19.2 with functional components & hooks |
 | **Bundler** | Vite 7.3 — blazing fast HMR & optimized production builds |
-| **Routing** | React Router DOM v7 |
+| **Backend** | Node.js + Express + Socket.IO 4.8 (multiplayer rooms) |
+| **Routing** | React Router DOM v7 (6 routes) |
 | **Styling** | 100% Vanilla CSS with custom glassmorphism design system |
 | **Icons** | Lucide React (tree-shakeable, lightweight) |
-| **State** | React Context API (`ExamContext`) |
+| **State** | React Context API (`ExamContext` + `RoomContext`) |
+| **Realtime** | Socket.IO client/server for WebSocket communication |
+| **Persistence** | localStorage for save/resume (up to 20 exams) |
 | **Fonts** | Outfit (headings) + JetBrains Mono (code/timers) via Google Fonts |
 | **Linting** | ESLint 9 with React Hooks + React Refresh plugins |
 
@@ -81,17 +127,27 @@ Works beautifully on desktop, tablet, and mobile. The question palette slides in
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/mockify.git
+git clone https://github.com/praveen-2528/mockify.git
 cd mockify
 
-# Install dependencies
+# Install frontend dependencies
 npm install
 
-# Start the dev server
+# Install server dependencies
+cd server && npm install && cd ..
+
+# Solo mode (frontend only)
 npm run dev
+
+# Multiplayer mode (frontend + backend)
+npm run dev:full
 ```
 
-Open `http://localhost:5173` and start practicing! 🎉
+| Mode | URL | What It Runs |
+|------|-----|--------------|
+| Solo | `http://localhost:5173` | Vite dev server only |
+| Multiplayer | `http://localhost:5173` + `:3001` | Vite + Socket.IO server |
+| LAN Play | `http://<your-ip>:5173` | Use `npx vite --host` for LAN access |
 
 ### Production Build
 
@@ -209,16 +265,16 @@ The app intelligently extracts questions from multiple JSON structures:
 ### Production Build
 ```
 ✓ vite v7.3.1 — build completed successfully
-✓ Client bundle built in 13.86s
+✓ Client bundle built in 10.97s
 
 Output (gzipped):
-  index.css    →  14.94 kB  │  gzip:  3.87 kB
-  index.js     → 248.16 kB  │  gzip: 79.27 kB
+  index.css    →  26.99 kB  │  gzip:  5.68 kB
+  index.js     → 312.80 kB  │  gzip: 98.22 kB
 ```
 
 ### Dependency Audit
 ```
-✓ 211 packages installed
+✓ 285+ packages installed (frontend) + 90 packages (server)
 ✓ 0 vulnerabilities found
 ✓ All peer dependencies satisfied
 ```
@@ -252,6 +308,17 @@ Output (gzipped):
 | 23 | Palette sidebar slides in on mobile | ✅ Pass |
 | 24 | Direct URL `/test` without state redirects to Setup | ✅ Pass |
 | 25 | Direct URL `/results` without state redirects to Setup | ✅ Pass |
+| 26 | Multiplayer: Create Room generates 6-char code | ✅ Pass |
+| 27 | Multiplayer: Join Room with code + name works | ✅ Pass |
+| 28 | Multiplayer: Participant list updates in real-time | ✅ Pass |
+| 29 | Friendly mode: Waits for all to answer before reveal | ✅ Pass |
+| 30 | Friendly mode: Correct answer + player choices shown | ✅ Pass |
+| 31 | Friendly mode: Host advances, peers follow | ✅ Pass |
+| 32 | Exam mode: No answers revealed till submission | ✅ Pass |
+| 33 | Leaderboard: Podium + ranked table after submission | ✅ Pass |
+| 34 | Save & Exit: Saves progress to localStorage | ✅ Pass |
+| 35 | Saved Exams: Resume from where you left off | ✅ Pass |
+| 36 | Auto-save: Silent save every 60s during solo test | ✅ Pass |
 
 ---
 
@@ -260,28 +327,37 @@ Output (gzipped):
 ```
 mockify/
 ├── index.html                  # Entry HTML with Google Fonts
-├── vite.config.js              # Vite configuration
+├── vite.config.js              # Vite config + Socket.IO proxy
 ├── eslint.config.js            # ESLint 9 flat config
 ├── package.json                # Dependencies & scripts
-├── questions.json              # Sample question bank
+├── questions.json              # Sample question bank (75 questions)
+├── server/
+│   ├── package.json            # Server dependencies
+│   └── index.js                # Express + Socket.IO room server
 ├── public/
 │   └── vite.svg                # Favicon
 └── src/
     ├── main.jsx                # React entry point (StrictMode)
-    ├── App.jsx                 # Router setup (3 routes)
+    ├── App.jsx                 # Router setup (6 routes)
     ├── App.css                 # Root layout
     ├── index.css               # Global design system & animations
+    ├── utils/
+    │   └── storage.js          # localStorage save/resume engine
     ├── context/
-    │   └── ExamContext.jsx     # Global state (exam, answers, timer)
+    │   ├── ExamContext.jsx     # Exam state (questions, answers, timer)
+    │   └── RoomContext.jsx     # Socket.IO room state & events
     ├── components/
     │   └── ui/
     │       ├── Button.jsx/css  # Variants: primary, outline, ghost
     │       ├── Card.jsx/css    # Glass card with gradient border
     │       └── Input.jsx/css   # Form input with error states
     └── pages/
-        ├── Setup.jsx/css       # 3-step config wizard
-        ├── Test.jsx/css        # Test engine with palette sidebar
-        └── Results.jsx/css     # Score summary + detailed review
+        ├── Setup.jsx/css       # 3-step config + nav to rooms/saved
+        ├── Test.jsx/css        # Test engine + friendly/exam modes
+        ├── Results.jsx/css     # Score summary + detailed review
+        ├── Lobby.jsx/css       # Create/Join room + waiting lobby
+        ├── SavedExams.jsx/css  # Saved exams gallery with resume
+        └── Leaderboard.jsx/css # Podium + ranked comparison table
 ```
 
 ---
