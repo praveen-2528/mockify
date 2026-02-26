@@ -347,6 +347,77 @@ app.post('/api/questions/generate', verifyToken, (req, res) => {
     res.json({ questions });
 });
 
+// ── Mocks: Save Full Mock Test ──────────────────────────────────────────────
+app.post('/api/mocks', verifyToken, (req, res) => {
+    const { examTemplateId, name, questions } = req.body;
+    if (!examTemplateId || !name || !Array.isArray(questions) || questions.length === 0) {
+        return res.status(400).json({ error: 'Missing required fields or valid questions.' });
+    }
+
+    try {
+        const insertMock = db.prepare('INSERT INTO mock_tests (user_id, exam_template_id, name) VALUES (?, ?, ?)');
+        const insertQuestion = db.prepare(`
+            INSERT INTO questions (user_id, mock_test_id, question_text, options, correct_answer, explanation, subject, subtopic, difficulty, exam_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+
+        db.transaction(() => {
+            const mockRes = insertMock.run(req.userId, examTemplateId, name);
+            const mockId = mockRes.lastInsertRowid;
+
+            for (const q of questions) {
+                insertQuestion.run(
+                    req.userId, mockId, q.text, JSON.stringify(q.options), q.correctAnswer,
+                    q.explanation || '', q.subject || 'General', q.subtopic || '',
+                    q.difficulty || 'medium', examTemplateId
+                );
+            }
+        })();
+
+        res.json({ success: true, message: `Mock test saved with ${questions.length} questions.` });
+    } catch (err) {
+        console.error('Error saving mock test:', err);
+        res.status(500).json({ error: 'Database error saving mock test.' });
+    }
+});
+
+// ── Mocks: List Saved Mocks ─────────────────────────────────────────────────
+app.get('/api/mocks', verifyToken, (req, res) => {
+    const rows = db.prepare(`
+        SELECT m.*, COUNT(q.id) as question_count 
+        FROM mock_tests m 
+        LEFT JOIN questions q ON m.id = q.mock_test_id 
+        WHERE m.user_id = ? 
+        GROUP BY m.id 
+        ORDER BY m.created_at DESC
+    `).all(req.userId);
+    res.json({ mocks: rows });
+});
+
+// ── Mocks: Get Mock Test Questions for Starting ──────────────────────────────
+app.get('/api/mocks/:id/start', verifyToken, (req, res) => {
+    const mockId = req.params.id;
+    // Verify ownership
+    const mock = db.prepare('SELECT * FROM mock_tests WHERE id = ? AND user_id = ?').get(mockId, req.userId);
+    if (!mock) return res.status(404).json({ error: 'Mock test not found.' });
+
+    const rows = db.prepare('SELECT * FROM questions WHERE mock_test_id = ? AND user_id = ?').all(mockId, req.userId);
+
+    const questions = rows.map(r => ({
+        id: r.id,
+        text: r.question_text,
+        options: JSON.parse(r.options),
+        correctAnswer: r.correct_answer,
+        explanation: r.explanation,
+        subject: r.subject,
+        subtopic: r.subtopic,
+        difficulty: r.difficulty,
+        examType: r.exam_type,
+    }));
+
+    res.json({ mock, questions });
+});
+
 // ─── Socket.IO Events ───────────────────────────────────────────────
 io.on('connection', (socket) => {
     console.log(`[Socket] Connected: ${socket.id}`);

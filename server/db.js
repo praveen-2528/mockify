@@ -44,9 +44,19 @@ db.exec(`
     CREATE INDEX IF NOT EXISTS idx_history_user ON test_history(user_id);
     CREATE INDEX IF NOT EXISTS idx_history_date ON test_history(created_at);
 
+    CREATE TABLE IF NOT EXISTS mock_tests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        exam_template_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS questions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
+        mock_test_id INTEGER,
         question_text TEXT NOT NULL,
         options TEXT NOT NULL,
         correct_answer INTEGER NOT NULL,
@@ -56,11 +66,24 @@ db.exec(`
         difficulty TEXT DEFAULT 'medium',
         exam_type TEXT DEFAULT 'ssc',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (mock_test_id) REFERENCES mock_tests(id) ON DELETE CASCADE
     );
+
+    CREATE INDEX IF NOT EXISTS idx_questions_mock ON questions(mock_test_id);
 
     CREATE INDEX IF NOT EXISTS idx_questions_user ON questions(user_id);
     CREATE INDEX IF NOT EXISTS idx_questions_subject ON questions(subject);
 `);
+
+// ─── Migrations ─────────────────────────────────────────────────────
+try {
+    // Attempt to add mock_test_id to questions if it doesn't exist
+    // This is for users who already have the older questions table
+    db.exec(`ALTER TABLE questions ADD COLUMN mock_test_id INTEGER;`);
+    console.log("Migration: Added mock_test_id to questions table");
+} catch (e) {
+    // If it throws, the column already exists, which is fine
+}
 
 export default db;

@@ -14,6 +14,7 @@ import Login from './pages/Login';
 import Settings from './pages/Settings';
 import GlobalLeaderboard from './pages/GlobalLeaderboard';
 import QuestionBank from './pages/QuestionBank';
+import MockBuilder from './pages/MockBuilder';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -36,6 +37,7 @@ function AppRoutes() {
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/global-leaderboard" element={<ProtectedRoute><GlobalLeaderboard /></ProtectedRoute>} />
       <Route path="/question-bank" element={<ProtectedRoute><QuestionBank /></ProtectedRoute>} />
+      <Route path="/mock-builder" element={<ProtectedRoute><MockBuilder /></ProtectedRoute>} />
     </Routes>
   );
 }

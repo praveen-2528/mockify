@@ -1,19 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExam } from '../context/ExamContext';
 import { useAuth } from '../context/AuthContext';
+import { EXAM_TEMPLATES } from '../utils/examTemplates';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { BookOpen, GraduationCap, Upload, FileJson, AlertCircle, Users, Folder, BarChart3, LogOut, Settings as SettingsIcon, Trophy, Library } from 'lucide-react';
+import { BookOpen, Upload, FileJson, AlertCircle, Users, Folder, BarChart3, LogOut, Settings as SettingsIcon, Trophy, Library, LayoutTemplate } from 'lucide-react';
 import './Setup.css';
 
 const Setup = () => {
     const { examType, testFormat, updateExamState } = useExam();
-    const { user, logout } = useAuth();
+    const { user, logout, authFetch } = useAuth();
     const navigate = useNavigate();
+
     const [step, setStep] = useState(1);
     const [jsonInput, setJsonInput] = useState('');
     const [error, setError] = useState('');
+
+    // Mocks state
+    const [savedMocks, setSavedMocks] = useState([]);
+    const [selectedMockId, setSelectedMockId] = useState('');
+
     const [markingPreset, setMarkingPreset] = useState('ssc'); // 'ssc', 'none', 'custom'
     const [customMarks, setCustomMarks] = useState({ correct: 2, incorrect: -0.5, unattempted: 0 });
 
@@ -21,6 +28,15 @@ const Setup = () => {
         ssc: { correct: 2, incorrect: -0.5, unattempted: 0, label: 'SSC Standard (+2 / -0.50)' },
         none: { correct: 1, incorrect: 0, unattempted: 0, label: 'No Negative (+1 / 0)' },
     };
+
+    useEffect(() => {
+        if (user) {
+            authFetch('/api/mocks')
+                .then(r => r.json())
+                .then(data => setSavedMocks(data.mocks || []))
+                .catch(err => console.error("Failed to fetch mocks", err));
+        }
+    }, [user, authFetch]);
 
     const getActiveScheme = () => {
         if (markingPreset === 'custom') return customMarks;
@@ -37,6 +53,28 @@ const Setup = () => {
         setStep(3);
     };
 
+    const startSavedMock = async () => {
+        if (!selectedMockId) return setError('Please select a saved mock test.');
+        try {
+            const res = await authFetch(`/api/mocks/${selectedMockId}/start`);
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            // Inherit marking scheme from template if it applies
+            const template = EXAM_TEMPLATES[data.mock.exam_template_id];
+
+            updateExamState({
+                questions: data.questions,
+                testStarted: true,
+                markingScheme: template ? template.markingScheme : getActiveScheme(),
+                examType: template ? template.id : examType
+            });
+            navigate('/test');
+        } catch (err) {
+            setError(err.message);
+        }
+    };
+
     const validateAndStart = () => {
         setError('');
         let parsedData;
@@ -51,7 +89,6 @@ const Setup = () => {
                 } else if (Array.isArray(parsedData.data)) {
                     questionsArray = parsedData.data;
                 } else {
-                    // Find first value that's an array
                     questionsArray = Object.values(parsedData).find(val => Array.isArray(val));
                 }
             }
@@ -59,40 +96,56 @@ const Setup = () => {
             if (!questionsArray || !Array.isArray(questionsArray)) {
                 throw new Error("Data must be an array of questions, or an object containing an array.");
             }
-            if (questionsArray.length === 0) {
-                throw new Error("No questions found in data.");
-            }
 
-            // Validate based on exam type
-            const requiredOptions = examType === 'ssc' ? 4 : 5;
+            // Determine expected options length from template if possible, otherwise old logic
+            const template = EXAM_TEMPLATES[examType];
+            const expectedOptionsLength = template ? template.optionsPerQuestion : (examType === 'ssc' ? 4 : 5);
 
             const formattedData = questionsArray.map((q, i) => {
-                if (!q.options || Object.keys(q.options).length !== requiredOptions) {
-                    throw new Error(`Question ${i + 1} must have exactly ${requiredOptions} options for ${examType.toUpperCase()} exam.`);
+                if (!q.question && !q.text) {
+                    throw new Error(`Question ${i + 1} is missing the 'question' or 'text' property.`);
                 }
 
-                // Convert options object to array A, B, C, D
-                const optionKeys = Object.keys(q.options).sort();
-                const optionsArray = optionKeys.map(key => q.options[key]);
+                let optionsArray = [];
+                let optionKeys = [];
 
-                // Find correct answer index
-                if (!q.correct_option || !optionKeys.includes(q.correct_option)) {
-                    throw new Error(`Question ${i + 1} has an invalid or missing correct_option.`);
+                if (Array.isArray(q.options)) {
+                    optionsArray = q.options;
+                } else if (typeof q.options === 'object' && q.options !== null) {
+                    optionKeys = Object.keys(q.options).sort();
+                    optionsArray = optionKeys.map(k => q.options[k]);
+                } else {
+                    throw new Error(`Question ${i + 1} has an invalid 'options' format.`);
                 }
 
-                const correctIndex = optionKeys.indexOf(q.correct_option);
+                if (optionsArray.length !== expectedOptionsLength) {
+                    throw new Error(`Question ${i + 1} has ${optionsArray.length} options, but the selected exam type requires ${expectedOptionsLength}.`);
+                }
+
+                let correctIndex = -1;
+                if (q.correct_index !== undefined) {
+                    correctIndex = q.correct_index;
+                } else if (q.correctAnswer !== undefined) {
+                    correctIndex = q.correctAnswer;
+                } else if (q.correct_option !== undefined && optionKeys.length > 0) {
+                    correctIndex = optionKeys.indexOf(q.correct_option);
+                }
+
+                if (correctIndex < 0 || correctIndex >= expectedOptionsLength) {
+                    throw new Error(`Question ${i + 1} has an invalid or missing correct answer.`);
+                }
 
                 return {
                     id: q.id || i,
-                    text: q.question,
+                    text: q.question || q.text,
                     options: optionsArray,
                     correctAnswer: correctIndex,
-                    subject: q.subtopic || q.difficulty,
+                    subject: q.subject || q.subtopic || q.difficulty || 'General',
                     explanation: q.explanation || "No explanation provided for this question."
                 };
             });
 
-            // Fisher-Yates Shuffle Algorithm to randomize questions
+            // Fisher-Yates Shuffle
             for (let i = formattedData.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [formattedData[i], formattedData[j]] = [formattedData[j], formattedData[i]];
@@ -110,9 +163,7 @@ const Setup = () => {
         const file = e.target.files[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (e) => {
-                setJsonInput(e.target.result);
-            };
+            reader.onload = (e) => setJsonInput(e.target.result);
             reader.readAsText(file);
         }
     };
@@ -134,7 +185,6 @@ const Setup = () => {
             </div>
 
             <Card className="setup-card">
-                {/* Step Indicators */}
                 <div className="steps-indicator">
                     <div className={`step ${step >= 1 ? 'active' : ''}`}>1. Exam</div>
                     <div className="step-line"></div>
@@ -148,23 +198,17 @@ const Setup = () => {
                     <div className="step-content animate-fade-in">
                         <h2>Select Exam Type</h2>
                         <div className="options-grid">
-                            <button
-                                className={`option-btn ${examType === 'ssc' ? 'selected' : ''}`}
-                                onClick={() => handleExamTypeSelect('ssc')}
-                            >
-                                <div className="option-icon"><BookOpen size={32} /></div>
-                                <h3>SSC Exam</h3>
-                                <p>4 Options per Question</p>
-                            </button>
-
-                            <button
-                                className={`option-btn ${examType === 'ibps' ? 'selected' : ''}`}
-                                onClick={() => handleExamTypeSelect('ibps')}
-                            >
-                                <div className="option-icon"><GraduationCap size={32} /></div>
-                                <h3>IBPS Banking</h3>
-                                <p>5 Options per Question</p>
-                            </button>
+                            {Object.values(EXAM_TEMPLATES).map(t => (
+                                <button
+                                    key={t.id}
+                                    className={`option-btn ${examType === t.id ? 'selected' : ''}`}
+                                    onClick={() => handleExamTypeSelect(t.id)}
+                                >
+                                    <div className="option-icon"><BookOpen size={32} /></div>
+                                    <h3>{t.name}</h3>
+                                    <p>{t.optionsPerQuestion} Options | {t.subjects.length} Subjects</p>
+                                </button>
+                            ))}
                         </div>
                     </div>
                 )}
@@ -193,28 +237,34 @@ const Setup = () => {
                 {/* Step 3: Data Upload */}
                 {step === 3 && (
                     <div className="step-content animate-fade-in">
-                        <h2>Upload Questions Data</h2>
-                        <p className="data-requirement">
-                            Required: JSON format with {examType === 'ssc' ? '4' : '5'} options per question.
-                        </p>
+                        <h2>Load Test Data</h2>
+
+                        {/* Play Saved Mock Section */}
+                        {savedMocks.length > 0 && testFormat === 'full' && (
+                            <div className="saved-mocks-section">
+                                <h4 className="marking-title"><LayoutTemplate size={16} /> Play Pre-Built Mock Test</h4>
+                                <div className="gen-row">
+                                    <select value={selectedMockId} onChange={e => setSelectedMockId(e.target.value)}>
+                                        <option value="">-- Select Saved Mock --</option>
+                                        {savedMocks.filter(m => m.exam_template_id === examType).map(m => (
+                                            <option key={m.id} value={m.id}>{m.name} ({m.question_count} Qs)</option>
+                                        ))}
+                                    </select>
+                                    <Button variant="primary" onClick={startSavedMock} disabled={!selectedMockId}>Launch Saved Mock</Button>
+                                </div>
+                                <div className="divider"><span>OR CUSTOM UPLOAD</span></div>
+                            </div>
+                        )}
 
                         <div className="data-input-area">
                             <div className="upload-section">
-                                <input
-                                    type="file"
-                                    id="json-upload"
-                                    accept=".json"
-                                    style={{ display: 'none' }}
-                                    onChange={handleFileUpload}
-                                />
+                                <input type="file" id="json-upload" accept=".json" style={{ display: 'none' }} onChange={handleFileUpload} />
                                 <label htmlFor="json-upload" className="upload-label">
                                     <Upload size={24} />
                                     <span>Upload questions.json</span>
                                 </label>
                             </div>
-
                             <div className="divider"><span>OR</span></div>
-
                             <div className="paste-section">
                                 <div className="paste-header">
                                     <FileJson size={18} />
@@ -231,26 +281,22 @@ const Setup = () => {
 
                         {/* Marking Scheme Picker */}
                         <div className="marking-section">
-                            <h4 className="marking-title">📝 Marking Scheme</h4>
+                            <h4 className="marking-title">📝 Override Marking Scheme</h4>
                             <div className="marking-presets">
                                 <button className={`marking-btn ${markingPreset === 'ssc' ? 'selected' : ''}`} onClick={() => setMarkingPreset('ssc')}>
                                     +2 / −0.50
-                                    <span>SSC Standard</span>
                                 </button>
                                 <button className={`marking-btn ${markingPreset === 'none' ? 'selected' : ''}`} onClick={() => setMarkingPreset('none')}>
                                     +1 / 0
-                                    <span>No Negative</span>
                                 </button>
                                 <button className={`marking-btn ${markingPreset === 'custom' ? 'selected' : ''}`} onClick={() => setMarkingPreset('custom')}>
-                                    ✏️
-                                    <span>Custom</span>
+                                    ✏️ Custom
                                 </button>
                             </div>
                             {markingPreset === 'custom' && (
                                 <div className="custom-marks-row">
                                     <label>Correct <input type="number" step="0.25" value={customMarks.correct} onChange={e => setCustomMarks(p => ({ ...p, correct: parseFloat(e.target.value) || 0 }))} /></label>
                                     <label>Wrong <input type="number" step="0.25" value={customMarks.incorrect} onChange={e => setCustomMarks(p => ({ ...p, incorrect: parseFloat(e.target.value) || 0 }))} /></label>
-                                    <label>Skip <input type="number" step="0.25" value={customMarks.unattempted} onChange={e => setCustomMarks(p => ({ ...p, unattempted: parseFloat(e.target.value) || 0 }))} /></label>
                                 </div>
                             )}
                         </div>
@@ -264,12 +310,8 @@ const Setup = () => {
 
                         <div className="step-actions split">
                             <Button variant="ghost" onClick={() => setStep(2)}>Back</Button>
-                            <Button
-                                variant="primary"
-                                onClick={validateAndStart}
-                                disabled={!jsonInput.trim()}
-                            >
-                                Start Test
+                            <Button variant="primary" onClick={validateAndStart} disabled={!jsonInput.trim()}>
+                                Start Custom Test
                             </Button>
                         </div>
                     </div>
@@ -277,6 +319,10 @@ const Setup = () => {
             </Card>
 
             <div className="setup-secondary-actions">
+                <button className="secondary-action-btn primary-tint" onClick={() => navigate('/mock-builder')}>
+                    <LayoutTemplate size={20} />
+                    <span>Mock Builder</span>
+                </button>
                 <button className="secondary-action-btn" onClick={() => navigate('/question-bank')}>
                     <Library size={20} />
                     <span>Question Bank</span>
