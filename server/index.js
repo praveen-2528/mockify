@@ -204,6 +204,17 @@ io.on('connection', (socket) => {
         callback?.({ success: true });
     });
 
+    // ── Chat (Friendly Mode) ──────────────────────────────────────────
+    socket.on('chatSend', ({ code, text }) => {
+        const room = rooms.get(code);
+        if (!room) return;
+
+        const sender = room.participants.find(p => p.id === socket.id)?.name || 'Unknown';
+        const msg = { sender, text: text.slice(0, 200), timestamp: Date.now() };
+
+        io.to(code).emit('chatMessage', msg);
+    });
+
     // ── Submit Results ───────────────────────────────────────────────
     socket.on('submitResults', ({ code, playerName, answers, timeSpent, score, total, correct, incorrect }, callback) => {
         const room = rooms.get(code);

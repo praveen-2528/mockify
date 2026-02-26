@@ -8,6 +8,7 @@ import Results from './pages/Results';
 import Lobby from './pages/Lobby';
 import SavedExams from './pages/SavedExams';
 import Leaderboard from './pages/Leaderboard';
+import Dashboard from './pages/Dashboard';
 import './App.css';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
             <Route path="/lobby" element={<Lobby />} />
             <Route path="/saved" element={<SavedExams />} />
             <Route path="/leaderboard" element={<Leaderboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
           </Routes>
         </Router>
       </RoomProvider>

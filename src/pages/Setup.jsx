@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useExam } from '../context/ExamContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { BookOpen, GraduationCap, Upload, FileJson, AlertCircle, Users, Folder } from 'lucide-react';
+import { BookOpen, GraduationCap, Upload, FileJson, AlertCircle, Users, Folder, BarChart3 } from 'lucide-react';
 import './Setup.css';
 
 const Setup = () => {
@@ -12,6 +12,18 @@ const Setup = () => {
     const [step, setStep] = useState(1);
     const [jsonInput, setJsonInput] = useState('');
     const [error, setError] = useState('');
+    const [markingPreset, setMarkingPreset] = useState('ssc'); // 'ssc', 'none', 'custom'
+    const [customMarks, setCustomMarks] = useState({ correct: 2, incorrect: -0.5, unattempted: 0 });
+
+    const markingPresets = {
+        ssc: { correct: 2, incorrect: -0.5, unattempted: 0, label: 'SSC Standard (+2 / -0.50)' },
+        none: { correct: 1, incorrect: 0, unattempted: 0, label: 'No Negative (+1 / 0)' },
+    };
+
+    const getActiveScheme = () => {
+        if (markingPreset === 'custom') return customMarks;
+        return markingPresets[markingPreset];
+    };
 
     const handleExamTypeSelect = (type) => {
         updateExamState({ examType: type });
@@ -84,7 +96,7 @@ const Setup = () => {
                 [formattedData[i], formattedData[j]] = [formattedData[j], formattedData[i]];
             }
 
-            updateExamState({ questions: formattedData, testStarted: true });
+            updateExamState({ questions: formattedData, testStarted: true, markingScheme: getActiveScheme() });
             navigate('/test');
 
         } catch (err) {
@@ -206,6 +218,32 @@ const Setup = () => {
                             </div>
                         </div>
 
+                        {/* Marking Scheme Picker */}
+                        <div className="marking-section">
+                            <h4 className="marking-title">📝 Marking Scheme</h4>
+                            <div className="marking-presets">
+                                <button className={`marking-btn ${markingPreset === 'ssc' ? 'selected' : ''}`} onClick={() => setMarkingPreset('ssc')}>
+                                    +2 / −0.50
+                                    <span>SSC Standard</span>
+                                </button>
+                                <button className={`marking-btn ${markingPreset === 'none' ? 'selected' : ''}`} onClick={() => setMarkingPreset('none')}>
+                                    +1 / 0
+                                    <span>No Negative</span>
+                                </button>
+                                <button className={`marking-btn ${markingPreset === 'custom' ? 'selected' : ''}`} onClick={() => setMarkingPreset('custom')}>
+                                    ✏️
+                                    <span>Custom</span>
+                                </button>
+                            </div>
+                            {markingPreset === 'custom' && (
+                                <div className="custom-marks-row">
+                                    <label>Correct <input type="number" step="0.25" value={customMarks.correct} onChange={e => setCustomMarks(p => ({ ...p, correct: parseFloat(e.target.value) || 0 }))} /></label>
+                                    <label>Wrong <input type="number" step="0.25" value={customMarks.incorrect} onChange={e => setCustomMarks(p => ({ ...p, incorrect: parseFloat(e.target.value) || 0 }))} /></label>
+                                    <label>Skip <input type="number" step="0.25" value={customMarks.unattempted} onChange={e => setCustomMarks(p => ({ ...p, unattempted: parseFloat(e.target.value) || 0 }))} /></label>
+                                </div>
+                            )}
+                        </div>
+
                         {error && (
                             <div className="error-message">
                                 <AlertCircle size={16} />
@@ -235,6 +273,10 @@ const Setup = () => {
                 <button className="secondary-action-btn" onClick={() => navigate('/saved')}>
                     <Folder size={20} />
                     <span>Saved Exams</span>
+                </button>
+                <button className="secondary-action-btn" onClick={() => navigate('/dashboard')}>
+                    <BarChart3 size={20} />
+                    <span>Dashboard</span>
                 </button>
             </div>
         </div>

@@ -18,6 +18,7 @@ export const ExamProvider = ({ children }) => {
         isMultiplayer: false,
         roomCode: null,
         _saveId: null, // for save/resume tracking
+        markingScheme: { correct: 2, incorrect: -0.5, unattempted: 0 },
     });
 
     const updateExamState = (updates) => {
@@ -38,6 +39,7 @@ export const ExamProvider = ({ children }) => {
             isMultiplayer: false,
             roomCode: null,
             _saveId: null,
+            markingScheme: { correct: 2, incorrect: -0.5, unattempted: 0 },
         });
     };
 
@@ -55,6 +57,7 @@ export const ExamProvider = ({ children }) => {
             isMultiplayer: false,
             roomCode: null,
             _saveId: saved.id,
+            markingScheme: saved.markingScheme || { correct: 2, incorrect: -0.5, unattempted: 0 },
         });
     };
 

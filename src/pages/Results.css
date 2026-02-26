@@ -300,3 +300,139 @@
         min-width: 45%;
     }
 }
+
+/* Marking Scheme Display */
+.marking-info-badge {
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(99, 102, 241, 0.15);
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: var(--font-mono), monospace;
+    color: #a5b4fc;
+}
+
+.stat-marks {
+    display: block;
+    font-size: 0.7rem;
+    font-family: var(--font-mono), monospace;
+    font-weight: 600;
+    margin-top: 0.2rem;
+}
+
+.stat-marks.positive {
+    color: var(--success);
+}
+
+.stat-marks.negative {
+    color: var(--danger);
+}
+
+.marks-pill {
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    font-family: var(--font-mono), monospace;
+}
+
+.marks-pill.positive {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+}
+
+.marks-pill.negative {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+/* Difficulty Heatmap */
+.heatmap-card {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+}
+
+.heatmap-title {
+    font-size: 1.1rem;
+    margin-bottom: 0.25rem;
+}
+
+.heatmap-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
+}
+
+.heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+    gap: 4px;
+    margin-bottom: 1rem;
+}
+
+.heatmap-cell {
+    position: relative;
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    background: var(--heat-color);
+    cursor: default;
+    transition: transform 0.15s;
+}
+
+.heatmap-cell:hover {
+    transform: scale(1.2);
+    z-index: 2;
+}
+
+.heatmap-cell.skipped {
+    opacity: 0.3;
+}
+
+.heatmap-num {
+    font-size: 0.65rem;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.7);
+}
+
+.heatmap-dot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.heatmap-dot.correct {
+    background: #065f46;
+}
+
+.heatmap-dot.wrong {
+    background: #7f1d1d;
+}
+
+.heatmap-legend {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+.legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    display: inline-block;
+}

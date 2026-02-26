@@ -6,6 +6,7 @@ import { saveExam } from '../utils/storage';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Clock, ChevronLeft, ChevronRight, CheckCircle, XCircle, List, Play, Pause, SaveAll, Bookmark, Save, Users } from 'lucide-react';
+import FriendlyChat from '../components/FriendlyChat';
 import './Test.css';
 
 const Test = () => {
@@ -530,6 +531,11 @@ const Test = () => {
                     </div>
                 </aside>
             </div>
+
+            {/* Friendly Chat */}
+            {isFriendly && room.socket && (
+                <FriendlyChat socket={room.socket} roomCode={roomCode} displayName={room.playerName} />
+            )}
         </div>
     );
 };

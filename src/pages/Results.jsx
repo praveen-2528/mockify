@@ -1,16 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExam } from '../context/ExamContext';
 import { useRoom } from '../context/RoomContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { CheckCircle, XCircle, ChevronLeft, Award, Clock, Trophy } from 'lucide-react';
+import { saveTestResult } from '../utils/history';
 import './Results.css';
 
 const Results = () => {
-    const { questions, answers, resetExam, testStarted, timeSpent, isMultiplayer, roomCode } = useExam();
+    const { questions, answers, resetExam, testStarted, timeSpent, isMultiplayer, roomCode, markingScheme } = useExam();
     const room = useRoom();
     const navigate = useNavigate();
+    const historySavedRef = useRef(false);
+
+    const ms = markingScheme || { correct: 2, incorrect: -0.5, unattempted: 0 };
 
     const formatTime = (seconds) => {
         if (!seconds) return '00:00';
@@ -27,14 +31,12 @@ const Results = () => {
 
     if (!testStarted || questions.length === 0) return null;
 
-    let score = 0;
-    let attempted = Object.keys(answers).length;
     let correct = 0;
     let incorrect = 0;
+    let attempted = Object.keys(answers).length;
 
     Object.keys(answers).forEach((qIndex) => {
         if (answers[qIndex] === questions[qIndex].correctAnswer) {
-            score += 1;
             correct += 1;
         } else {
             incorrect += 1;
@@ -42,7 +44,71 @@ const Results = () => {
     });
 
     const unattempted = questions.length - attempted;
-    const percentage = ((score / questions.length) * 100).toFixed(1);
+    const rawScore = correct; // simple count
+    const totalMarks = (correct * ms.correct) + (incorrect * ms.incorrect) + (unattempted * ms.unattempted);
+    const maxMarks = questions.length * ms.correct;
+    const percentage = ((correct / questions.length) * 100).toFixed(1);
+    const hasNegative = ms.incorrect < 0;
+
+    // Save to history once
+    useEffect(() => {
+        if (historySavedRef.current) return;
+        historySavedRef.current = true;
+
+        // Build topic breakdown
+        const topicBreakdown = {};
+        questions.forEach((q, idx) => {
+            const topic = q.subject || 'General';
+            if (!topicBreakdown[topic]) topicBreakdown[topic] = { correct: 0, total: 0 };
+            topicBreakdown[topic].total += 1;
+            if (answers[idx] !== undefined && answers[idx] === q.correctAnswer) {
+                topicBreakdown[topic].correct += 1;
+            }
+        });
+
+        const totalTimeSec = timeSpent.reduce((a, b) => a + (b || 0), 0);
+
+        saveTestResult({
+            examType: questions[0]?.examType || 'ssc',
+            testFormat: 'mock',
+            score: rawScore,
+            total: questions.length,
+            correct,
+            incorrect,
+            unattempted,
+            totalMarks,
+            maxMarks,
+            percentage: parseFloat(percentage),
+            totalTime: totalTimeSec,
+            markingScheme: ms,
+            topicBreakdown,
+            isMultiplayer,
+        });
+    }, []);
+
+    // Time heatmap data
+    const allTimes = timeSpent.filter(t => t > 0);
+    const avgTime = allTimes.length > 0 ? allTimes.reduce((a, b) => a + b, 0) / allTimes.length : 0;
+
+    const getHeatColor = (time) => {
+        if (!time || time === 0) return 'var(--card-bg)'; // skipped
+        const ratio = time / avgTime;
+        if (ratio < 0.5) return '#10b981';  // fast - green
+        if (ratio < 1.0) return '#34d399';  // normal-fast
+        if (ratio < 1.5) return '#fbbf24';  // average - yellow
+        if (ratio < 2.5) return '#f97316';  // slow - orange
+        return '#ef4444';                    // very slow - red
+    };
+
+    const getHeatLabel = (time) => {
+        if (!time || time === 0) return 'Skipped';
+        const ratio = time / avgTime;
+        if (ratio < 0.5) return 'Fast';
+        if (ratio < 1.0) return 'Normal';
+        if (ratio < 1.5) return 'Average';
+        if (ratio < 2.5) return 'Slow';
+        return 'Very Slow';
+    };
 
     const handleBackHome = () => {
         if (isMultiplayer) room.leaveRoom();
@@ -72,27 +138,67 @@ const Results = () => {
             <main className="results-content">
                 <Card className="score-card glass">
                     <div className="score-circle">
-                        <div className="score-value">{score}<span>/{questions.length}</span></div>
+                        <div className="score-value">{totalMarks}<span>/{maxMarks}</span></div>
                         <div className="score-percentage">{percentage}%</div>
+                        {hasNegative && (
+                            <div className="marking-info-badge">
+                                +{ms.correct} / {ms.incorrect}
+                            </div>
+                        )}
                     </div>
 
                     <div className="score-stats">
                         <div className="stat-box">
-                            <span className="stat-label">Attempted</span>
-                            <span className="stat-value text-blue-400">{attempted}</span>
-                        </div>
-                        <div className="stat-box">
                             <span className="stat-label">Correct</span>
                             <span className="stat-value text-success">{correct}</span>
+                            {hasNegative && <span className="stat-marks positive">+{(correct * ms.correct).toFixed(1)}</span>}
                         </div>
                         <div className="stat-box">
                             <span className="stat-label">Incorrect</span>
                             <span className="stat-value text-danger">{incorrect}</span>
+                            {hasNegative && incorrect > 0 && <span className="stat-marks negative">{(incorrect * ms.incorrect).toFixed(1)}</span>}
                         </div>
                         <div className="stat-box">
                             <span className="stat-label">Skipped</span>
                             <span className="stat-value text-slate-400">{unattempted}</span>
                         </div>
+                        <div className="stat-box">
+                            <span className="stat-label">Attempted</span>
+                            <span className="stat-value text-blue-400">{attempted}</span>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Difficulty Heatmap */}
+                <Card className="heatmap-card glass">
+                    <h3 className="heatmap-title">🌡️ Time Difficulty Heatmap</h3>
+                    <p className="heatmap-subtitle">Color shows how long you spent relative to average ({formatTime(Math.round(avgTime))})</p>
+                    <div className="heatmap-grid">
+                        {questions.map((_, idx) => {
+                            const time = timeSpent[idx] || 0;
+                            const userAnswer = answers[idx];
+                            const isCorrect = userAnswer !== undefined && userAnswer === questions[idx].correctAnswer;
+                            return (
+                                <div
+                                    key={idx}
+                                    className={`heatmap-cell ${userAnswer === undefined ? 'skipped' : ''}`}
+                                    style={{ '--heat-color': getHeatColor(time) }}
+                                    title={`Q${idx + 1}: ${formatTime(time)} — ${getHeatLabel(time)}${userAnswer !== undefined ? (isCorrect ? ' ✅' : ' ❌') : ' (skipped)'}`}
+                                >
+                                    <span className="heatmap-num">{idx + 1}</span>
+                                    {userAnswer !== undefined && (
+                                        <span className={`heatmap-dot ${isCorrect ? 'correct' : 'wrong'}`}></span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="heatmap-legend">
+                        <div className="legend-item"><span className="legend-color" style={{ background: '#10b981' }}></span> Fast</div>
+                        <div className="legend-item"><span className="legend-color" style={{ background: '#34d399' }}></span> Normal</div>
+                        <div className="legend-item"><span className="legend-color" style={{ background: '#fbbf24' }}></span> Average</div>
+                        <div className="legend-item"><span className="legend-color" style={{ background: '#f97316' }}></span> Slow</div>
+                        <div className="legend-item"><span className="legend-color" style={{ background: '#ef4444' }}></span> V. Slow</div>
                     </div>
                 </Card>
 
@@ -112,6 +218,11 @@ const Results = () => {
                                         <span className="q-time text-slate-400" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem' }}>
                                             <Clock size={14} /> {formatTime(timeSpent?.[idx] || 0)}
                                         </span>
+                                        {isAttempted && (
+                                            <span className={`marks-pill ${isCorrect ? 'positive' : 'negative'}`}>
+                                                {isCorrect ? `+${ms.correct}` : ms.incorrect}
+                                            </span>
+                                        )}
                                     </div>
                                     <div className="q-status">
                                         {!isAttempted && <span className="status-badge skipped">Skipped</span>}

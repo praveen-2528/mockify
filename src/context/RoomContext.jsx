@@ -15,7 +15,7 @@ export const RoomProvider = ({ children }) => {
         isHost: false,
         hostName: '',
         playerName: '',
-        roomMode: 'individual', // 'sync' or 'individual'
+        roomMode: 'friendly', // 'sync' or 'individual'
         participants: [],
         started: false,
         examType: null,
@@ -187,7 +187,7 @@ export const RoomProvider = ({ children }) => {
             isHost: false,
             hostName: '',
             playerName: '',
-            roomMode: 'individual',
+            roomMode: 'friendly',
             participants: [],
             started: false,
             examType: null,
