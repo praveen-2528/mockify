@@ -43,6 +43,24 @@ db.exec(`
 
     CREATE INDEX IF NOT EXISTS idx_history_user ON test_history(user_id);
     CREATE INDEX IF NOT EXISTS idx_history_date ON test_history(created_at);
+
+    CREATE TABLE IF NOT EXISTS questions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        question_text TEXT NOT NULL,
+        options TEXT NOT NULL,
+        correct_answer INTEGER NOT NULL,
+        explanation TEXT DEFAULT '',
+        subject TEXT DEFAULT 'General',
+        subtopic TEXT DEFAULT '',
+        difficulty TEXT DEFAULT 'medium',
+        exam_type TEXT DEFAULT 'ssc',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_questions_user ON questions(user_id);
+    CREATE INDEX IF NOT EXISTS idx_questions_subject ON questions(subject);
 `);
 
 export default db;

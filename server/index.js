@@ -174,6 +174,179 @@ app.delete('/api/history', verifyToken, (req, res) => {
     res.json({ success: true });
 });
 
+// ── Auth: Change Password ───────────────────────────────────────────
+app.put('/api/auth/password', verifyToken, (req, res) => {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both current and new password required.' });
+    if (newPassword.length < 6) return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+
+    const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.userId);
+    if (!user || !bcrypt.compareSync(currentPassword, user.password_hash)) {
+        return res.status(401).json({ error: 'Current password is incorrect.' });
+    }
+
+    const hash = bcrypt.hashSync(newPassword, 10);
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, req.userId);
+    res.json({ success: true });
+});
+
+// ── Global Leaderboard ──────────────────────────────────────────────
+app.get('/api/leaderboard', (req, res) => {
+    const rows = db.prepare(`
+        SELECT u.id, u.name,
+            COUNT(h.id) as tests_taken,
+            ROUND(AVG(h.percentage), 1) as avg_score,
+            ROUND(MAX(h.percentage), 1) as best_score,
+            SUM(h.total_time) as total_time
+        FROM users u
+        JOIN test_history h ON h.user_id = u.id
+        GROUP BY u.id
+        HAVING tests_taken >= 1
+        ORDER BY avg_score DESC
+        LIMIT 20
+    `).all();
+
+    res.json({ leaderboard: rows });
+});
+
+// ── Questions: List (with filters) ──────────────────────────────────
+app.get('/api/questions', verifyToken, (req, res) => {
+    const { subject, search, page = 1 } = req.query;
+    const limit = 50;
+    const offset = (parseInt(page) - 1) * limit;
+
+    let where = 'WHERE user_id = ?';
+    const params = [req.userId];
+
+    if (subject) { where += ' AND subject = ?'; params.push(subject); }
+    if (search) { where += ' AND question_text LIKE ?'; params.push(`%${search}%`); }
+
+    const total = db.prepare(`SELECT COUNT(*) as count FROM questions ${where}`).get(...params).count;
+    const rows = db.prepare(`SELECT * FROM questions ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`).all(...params, limit, offset);
+
+    const questions = rows.map(r => ({
+        id: r.id,
+        text: r.question_text,
+        options: JSON.parse(r.options),
+        correctAnswer: r.correct_answer,
+        explanation: r.explanation,
+        subject: r.subject,
+        subtopic: r.subtopic,
+        difficulty: r.difficulty,
+        examType: r.exam_type,
+    }));
+
+    const subjects = db.prepare('SELECT DISTINCT subject FROM questions WHERE user_id = ? ORDER BY subject').all(req.userId).map(r => r.subject);
+
+    res.json({ questions, total, subjects, page: parseInt(page), pages: Math.ceil(total / limit) });
+});
+
+// ── Questions: Add Single ───────────────────────────────────────────
+app.post('/api/questions', verifyToken, (req, res) => {
+    const { text, options, correctAnswer, explanation, subject, subtopic, difficulty, examType } = req.body;
+
+    if (!text || !options || correctAnswer === undefined) {
+        return res.status(400).json({ error: 'Question text, options, and correct answer are required.' });
+    }
+
+    const result = db.prepare(`
+        INSERT INTO questions (user_id, question_text, options, correct_answer, explanation, subject, subtopic, difficulty, exam_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(req.userId, text, JSON.stringify(options), correctAnswer, explanation || '', subject || 'General', subtopic || '', difficulty || 'medium', examType || 'ssc');
+
+    res.status(201).json({ id: result.lastInsertRowid });
+});
+
+// ── Questions: Bulk Import ──────────────────────────────────────────
+app.post('/api/questions/bulk', verifyToken, (req, res) => {
+    const { questions } = req.body;
+    if (!Array.isArray(questions) || questions.length === 0) {
+        return res.status(400).json({ error: 'Provide an array of questions.' });
+    }
+
+    const stmt = db.prepare(`
+        INSERT INTO questions (user_id, question_text, options, correct_answer, explanation, subject, subtopic, difficulty, exam_type)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const insertMany = db.transaction((items) => {
+        let count = 0;
+        for (const q of items) {
+            let text = q.text || q.question || '';
+            let options = q.options;
+            let correctAnswer = q.correctAnswer;
+            let explanation = q.explanation || '';
+
+            if (options && !Array.isArray(options)) {
+                const keys = Object.keys(options).sort();
+                const optArr = keys.map(k => options[k]);
+                correctAnswer = keys.indexOf(q.correct_option);
+                options = optArr;
+            }
+
+            if (!text || !options || correctAnswer === undefined) continue;
+
+            stmt.run(
+                req.userId, text, JSON.stringify(options), correctAnswer,
+                explanation, q.subject || q.subtopic || 'General', q.subtopic || '', q.difficulty || 'medium', q.exam_type || 'ssc'
+            );
+            count++;
+        }
+        return count;
+    });
+
+    const imported = insertMany(questions);
+    res.status(201).json({ imported });
+});
+
+// ── Questions: Update ───────────────────────────────────────────────
+app.put('/api/questions/:id', verifyToken, (req, res) => {
+    const { text, options, correctAnswer, explanation, subject, subtopic, difficulty } = req.body;
+    const q = db.prepare('SELECT id FROM questions WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    if (!q) return res.status(404).json({ error: 'Question not found.' });
+
+    db.prepare(`
+        UPDATE questions SET question_text=?, options=?, correct_answer=?, explanation=?, subject=?, subtopic=?, difficulty=?
+        WHERE id=? AND user_id=?
+    `).run(text, JSON.stringify(options), correctAnswer, explanation || '', subject || 'General', subtopic || '', difficulty || 'medium', req.params.id, req.userId);
+
+    res.json({ success: true });
+});
+
+// ── Questions: Delete ───────────────────────────────────────────────
+app.delete('/api/questions/:id', verifyToken, (req, res) => {
+    const result = db.prepare('DELETE FROM questions WHERE id = ? AND user_id = ?').run(req.params.id, req.userId);
+    if (result.changes === 0) return res.status(404).json({ error: 'Question not found.' });
+    res.json({ success: true });
+});
+
+// ── Questions: Generate Test ────────────────────────────────────────
+app.post('/api/questions/generate', verifyToken, (req, res) => {
+    const { subject, count = 25 } = req.body;
+    let where = 'WHERE user_id = ?';
+    const params = [req.userId];
+
+    if (subject && subject !== 'all') { where += ' AND subject = ?'; params.push(subject); }
+
+    const rows = db.prepare(`SELECT * FROM questions ${where} ORDER BY RANDOM() LIMIT ?`).all(...params, parseInt(count));
+
+    if (rows.length === 0) {
+        return res.status(404).json({ error: 'No questions found. Import some questions first.' });
+    }
+
+    const questions = rows.map(r => ({
+        id: r.id,
+        text: r.question_text,
+        options: JSON.parse(r.options),
+        correctAnswer: r.correct_answer,
+        explanation: r.explanation,
+        subject: r.subject,
+        subtopic: r.subtopic,
+    }));
+
+    res.json({ questions });
+});
+
 // ─── Socket.IO Events ───────────────────────────────────────────────
 io.on('connection', (socket) => {
     console.log(`[Socket] Connected: ${socket.id}`);

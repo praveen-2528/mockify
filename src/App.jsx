@@ -11,6 +11,9 @@ import SavedExams from './pages/SavedExams';
 import Leaderboard from './pages/Leaderboard';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
+import Settings from './pages/Settings';
+import GlobalLeaderboard from './pages/GlobalLeaderboard';
+import QuestionBank from './pages/QuestionBank';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -30,6 +33,9 @@ function AppRoutes() {
       <Route path="/saved" element={<ProtectedRoute><SavedExams /></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+      <Route path="/global-leaderboard" element={<ProtectedRoute><GlobalLeaderboard /></ProtectedRoute>} />
+      <Route path="/question-bank" element={<ProtectedRoute><QuestionBank /></ProtectedRoute>} />
     </Routes>
   );
 }

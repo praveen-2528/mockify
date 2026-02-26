@@ -4,7 +4,7 @@ import { useExam } from '../context/ExamContext';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { BookOpen, GraduationCap, Upload, FileJson, AlertCircle, Users, Folder, BarChart3, LogOut } from 'lucide-react';
+import { BookOpen, GraduationCap, Upload, FileJson, AlertCircle, Users, Folder, BarChart3, LogOut, Settings as SettingsIcon, Trophy, Library } from 'lucide-react';
 import './Setup.css';
 
 const Setup = () => {
@@ -122,7 +122,10 @@ const Setup = () => {
             {/* User Bar */}
             <div className="user-bar">
                 <span className="user-greeting">👋 {user?.name || 'Guest'}</span>
-                <button className="logout-btn" onClick={logout}><LogOut size={14} /> Logout</button>
+                <div className="user-actions">
+                    <button className="icon-btn" onClick={() => navigate('/settings')} title="Settings"><SettingsIcon size={16} /></button>
+                    <button className="logout-btn" onClick={logout}><LogOut size={14} /> Logout</button>
+                </div>
             </div>
 
             <div className="setup-header">
@@ -274,17 +277,25 @@ const Setup = () => {
             </Card>
 
             <div className="setup-secondary-actions">
-                <button className="secondary-action-btn" onClick={() => navigate('/lobby')}>
-                    <Users size={20} />
-                    <span>Multiplayer Room</span>
+                <button className="secondary-action-btn" onClick={() => navigate('/question-bank')}>
+                    <Library size={20} />
+                    <span>Question Bank</span>
                 </button>
-                <button className="secondary-action-btn" onClick={() => navigate('/saved')}>
-                    <Folder size={20} />
-                    <span>Saved Exams</span>
+                <button className="secondary-action-btn" onClick={() => navigate('/global-leaderboard')}>
+                    <Trophy size={20} />
+                    <span>Leaderboard</span>
                 </button>
                 <button className="secondary-action-btn" onClick={() => navigate('/dashboard')}>
                     <BarChart3 size={20} />
                     <span>Dashboard</span>
+                </button>
+                <button className="secondary-action-btn" onClick={() => navigate('/lobby')}>
+                    <Users size={20} />
+                    <span>Multiplayer</span>
+                </button>
+                <button className="secondary-action-btn" onClick={() => navigate('/saved')}>
+                    <Folder size={20} />
+                    <span>Saved Exams</span>
                 </button>
             </div>
         </div>
