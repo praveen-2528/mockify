@@ -104,6 +104,25 @@
     font-weight: 700;
 }
 
+.clear-subject-btn {
+    background: rgba(248, 113, 113, 0.1);
+    color: #f87171;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.clear-subject-btn:hover {
+    background: #f87171;
+    color: white;
+}
+
 .json-paste-area {
     width: 100%;
     height: 120px;

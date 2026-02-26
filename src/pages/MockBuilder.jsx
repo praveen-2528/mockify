@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { EXAM_TEMPLATES } from '../utils/examTemplates';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { ChevronLeft, FileJson, CheckCircle, AlertCircle, Save, LayoutTemplate } from 'lucide-react';
+import { ChevronLeft, FileJson, CheckCircle, AlertCircle, Save, LayoutTemplate, Trash2 } from 'lucide-react';
 import './MockBuilder.css';
 
 const MockBuilder = () => {
@@ -149,7 +149,21 @@ const MockBuilder = () => {
                                 <h3>{subj.name}</h3>
                                 <div className="subject-status">
                                     <span className="count-badge">{data?.length || 0} / {subj.count}</span>
-                                    {isDone && <CheckCircle size={16} className="text-success" />}
+                                    {isDone && (
+                                        <>
+                                            <CheckCircle size={16} className="text-success" />
+                                            <button
+                                                className="clear-subject-btn"
+                                                title="Clear Questions"
+                                                onClick={() => {
+                                                    setSubjectData(p => { const n = { ...p }; delete n[subj.id]; return n; });
+                                                    setMsgs(p => { const n = { ...p }; delete n[subj.id]; return n; });
+                                                }}
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 
