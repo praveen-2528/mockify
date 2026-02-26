@@ -2,17 +2,28 @@
   <img src="https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react&logoColor=white" />
   <img src="https://img.shields.io/badge/Vite-7.3-646CFF?style=for-the-badge&logo=vite&logoColor=white" />
   <img src="https://img.shields.io/badge/Socket.IO-4.8-010101?style=for-the-badge&logo=socketdotio&logoColor=white" />
+  <img src="https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white" />
   <img src="https://img.shields.io/badge/Node.js-Express-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" />
   <img src="https://img.shields.io/badge/Vanilla_CSS-Glassmorphism-FF6B6B?style=for-the-badge&logo=css3&logoColor=white" />
   <img src="https://img.shields.io/badge/Build-Passing-10B981?style=for-the-badge&logo=checkmarx&logoColor=white" />
-  <img src="https://img.shields.io/badge/License-MIT-A78BFA?style=for-the-badge" />
 </p>
+
+```text
+ __  __            _    _  __       
+|  \/  |          | |  (_)/ _|      
+| \  / | ___   ___| | _ _| |_ _   _ 
+| |\/| |/ _ \ / __| |/ / |  _| | | |
+| |  | | (_) | (__|   <| | | | |_| |
+|_|  |_|\___/ \___|_|\_\_|_|  \__, |
+                               __/ |
+                              |___/ 
+```
 
 <h1 align="center">🎯 Mockify</h1>
 
 <p align="center">
   <strong>A premium, multiplayer-ready mock-test platform built for serious exam preparation.</strong><br/>
-  Multiplayer Rooms · Friendly & Exam Modes · Leaderboard · Save & Resume · Glassmorphism UI · BYOD JSON
+  Multiplayer Rooms · Authentication · Global Leaderboards · Question Bank · Glassmorphism UI
 </p>
 
 <p align="center">
@@ -30,13 +41,20 @@
 
 ## ✨ Features
 
-### 🧩 Dynamic Configuration Flow
-Kickstart your test session in **3 intuitive steps**:
-| Step | What You Pick | Details |
-|------|--------------|---------|
-| **1. Exam Type** | SSC or IBPS | Automatically validates 4 vs 5 options per question |
-| **2. Test Format** | Full Mock · Subject Wise · Topic Wise | Flexible practice modes |
-| **3. Data Source** | Upload `.json` or paste raw JSON | Zero backend — your data, your rules |
+### 🔐 Authentication & Profiles
+- **Secure Login** — Email/password auth powered by SQLite, bcrypt (10 rounds), and JWT.
+- **Protected Routes** — App is locked down until you log in; dashboard and histories are tied to your account.
+- **Profile Management** — Manage your details and securely change your password from the Settings page.
+
+### 📚 Personal Question Bank
+- **Your Own Database** — Stop pasting JSON every time. Upload your catalog once and it saves to your account.
+- **Management Console** — Browse, search, filter, edit, and delete your questions.
+- **Instant Test Generation** — Pick a subject, type the number of questions (e.g., 25), and hit generate. Mockify instantly builds a random unique test from your bank.
+
+### 🏆 Global Leaderboard
+- Compare your performance against all Mockify users!
+- **Dynamic Podium** features the Top 3 players with scaling bars.
+- Ranks based on **Average Score** across all tests taken.
 
 ### 🎨 Premium Glassmorphism UI
 - **Deep Space Background** — Animated mesh gradient with floating red/grey geometric blobs and an SVG noise-grain overlay for tangible depth
