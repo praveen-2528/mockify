@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getTestHistory, clearHistory } from '../utils/history';
+import { useAuth } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { ChevronLeft, Trash2, TrendingUp, Target, Clock, Award, BarChart3 } from 'lucide-react';
@@ -8,7 +8,16 @@ import './Dashboard.css';
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const [history, setHistory] = useState(() => getTestHistory());
+    const { authFetch, user } = useAuth();
+    const [history, setHistory] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        authFetch('/api/history')
+            .then(r => r.json())
+            .then(data => { setHistory(data.history || []); setLoading(false); })
+            .catch(() => setLoading(false));
+    }, [authFetch]);
 
     const stats = useMemo(() => {
         if (history.length === 0) return null;
@@ -55,9 +64,9 @@ const Dashboard = () => {
         return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
     };
 
-    const handleClear = () => {
+    const handleClear = async () => {
         if (window.confirm('Clear all test history? This cannot be undone.')) {
-            clearHistory();
+            await authFetch('/api/history', { method: 'DELETE' });
             setHistory([]);
         }
     };
@@ -88,6 +97,14 @@ const Dashboard = () => {
 
     // Topic bar chart
     const maxTopicTotal = stats?.topicList?.length > 0 ? Math.max(...stats.topicList.map(t => t.total)) : 0;
+
+    if (loading) {
+        return (
+            <div className="dashboard-container animate-fade-in">
+                <div className="loading-screen"><div className="loading-spinner" /></div>
+            </div>
+        );
+    }
 
     if (history.length === 0) {
         return (

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useExam } from '../context/ExamContext';
+import { useAuth } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { BookOpen, GraduationCap, Upload, FileJson, AlertCircle, Users, Folder, BarChart3 } from 'lucide-react';
+import { BookOpen, GraduationCap, Upload, FileJson, AlertCircle, Users, Folder, BarChart3, LogOut } from 'lucide-react';
 import './Setup.css';
 
 const Setup = () => {
     const { examType, testFormat, updateExamState } = useExam();
+    const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [step, setStep] = useState(1);
     const [jsonInput, setJsonInput] = useState('');
@@ -117,6 +119,12 @@ const Setup = () => {
 
     return (
         <div className="setup-container animate-fade-in">
+            {/* User Bar */}
+            <div className="user-bar">
+                <span className="user-greeting">👋 {user?.name || 'Guest'}</span>
+                <button className="logout-btn" onClick={logout}><LogOut size={14} /> Logout</button>
+            </div>
+
             <div className="setup-header">
                 <h1>Mockify</h1>
                 <p>Configure your practice session</p>

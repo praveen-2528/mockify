@@ -3,10 +3,15 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { nanoid } from 'nanoid';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import db from './db.js';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'mockify_secret_key_change_in_production';
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
@@ -35,9 +40,138 @@ setInterval(() => {
     }
 }, 60 * 1000);
 
+// ─── Auth Middleware ─────────────────────────────────────────────────
+const verifyToken = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: 'No token provided' });
+    }
+    try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.userId = decoded.userId;
+        req.userName = decoded.name;
+        next();
+    } catch {
+        return res.status(401).json({ error: 'Invalid token' });
+    }
+};
+
 // ─── REST Endpoints ──────────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
     res.json({ status: 'ok', rooms: rooms.size });
+});
+
+// ── Auth: Register ───────────────────────────────────────────────────
+app.post('/api/auth/register', (req, res) => {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+        return res.status(400).json({ error: 'Name, email, and password are required.' });
+    }
+    if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+
+    const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
+    if (existing) {
+        return res.status(409).json({ error: 'An account with this email already exists.' });
+    }
+
+    const hash = bcrypt.hashSync(password, 10);
+    const result = db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)').run(name.trim(), email.toLowerCase().trim(), hash);
+
+    const token = jwt.sign({ userId: result.lastInsertRowid, name: name.trim() }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.status(201).json({
+        token,
+        user: { id: result.lastInsertRowid, name: name.trim(), email: email.toLowerCase().trim() },
+    });
+});
+
+// ── Auth: Login ──────────────────────────────────────────────────────
+app.post('/api/auth/login', (req, res) => {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+        return res.status(400).json({ error: 'Email and password are required.' });
+    }
+
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email.toLowerCase().trim());
+    if (!user) {
+        return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    if (!bcrypt.compareSync(password, user.password_hash)) {
+        return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+
+    const token = jwt.sign({ userId: user.id, name: user.name }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({
+        token,
+        user: { id: user.id, name: user.name, email: user.email },
+    });
+});
+
+// ── Auth: Get Current User ──────────────────────────────────────────
+app.get('/api/auth/me', verifyToken, (req, res) => {
+    const user = db.prepare('SELECT id, name, email, created_at FROM users WHERE id = ?').get(req.userId);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+    res.json({ user });
+});
+
+// ── History: Save Test Result ────────────────────────────────────────
+app.post('/api/history', verifyToken, (req, res) => {
+    const { examType, testFormat, score, total, correct, incorrect, unattempted, totalMarks, maxMarks, percentage, totalTime, markingScheme, topicBreakdown, isMultiplayer } = req.body;
+
+    const stmt = db.prepare(`
+        INSERT INTO test_history (user_id, exam_type, test_format, score, total, correct, incorrect, unattempted, total_marks, max_marks, percentage, total_time, marking_scheme, topic_breakdown, is_multiplayer)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+        req.userId, examType, testFormat,
+        score || 0, total || 0, correct || 0, incorrect || 0, unattempted || 0,
+        totalMarks || 0, maxMarks || 0, percentage || 0, totalTime || 0,
+        markingScheme ? JSON.stringify(markingScheme) : null,
+        topicBreakdown ? JSON.stringify(topicBreakdown) : null,
+        isMultiplayer ? 1 : 0
+    );
+
+    res.status(201).json({ id: result.lastInsertRowid });
+});
+
+// ── History: Get User's History ──────────────────────────────────────
+app.get('/api/history', verifyToken, (req, res) => {
+    const rows = db.prepare('SELECT * FROM test_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').all(req.userId);
+
+    const history = rows.map(r => ({
+        id: r.id,
+        examType: r.exam_type,
+        testFormat: r.test_format,
+        score: r.score,
+        total: r.total,
+        correct: r.correct,
+        incorrect: r.incorrect,
+        unattempted: r.unattempted,
+        totalMarks: r.total_marks,
+        maxMarks: r.max_marks,
+        percentage: r.percentage,
+        totalTime: r.total_time,
+        markingScheme: r.marking_scheme ? JSON.parse(r.marking_scheme) : null,
+        topicBreakdown: r.topic_breakdown ? JSON.parse(r.topic_breakdown) : null,
+        isMultiplayer: !!r.is_multiplayer,
+        date: r.created_at,
+    }));
+
+    res.json({ history });
+});
+
+// ── History: Clear ───────────────────────────────────────────────────
+app.delete('/api/history', verifyToken, (req, res) => {
+    db.prepare('DELETE FROM test_history WHERE user_id = ?').run(req.userId);
+    res.json({ success: true });
 });
 
 // ─── Socket.IO Events ───────────────────────────────────────────────

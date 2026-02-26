@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRoom } from '../context/RoomContext';
 import { useExam } from '../context/ExamContext';
+import { useAuth } from '../context/AuthContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Users, Plus, LogIn, Copy, Check, Wifi, WifiOff, Crown, User, Zap, BookOpen, ChevronLeft } from 'lucide-react';
@@ -11,10 +12,11 @@ const Lobby = () => {
     const navigate = useNavigate();
     const room = useRoom();
     const { updateExamState } = useExam();
+    const { user } = useAuth();
 
     const [tab, setTab] = useState('create'); // 'create' or 'join'
-    const [hostName, setHostName] = useState('');
-    const [playerName, setPlayerName] = useState('');
+    const [hostName, setHostName] = useState(user?.name || '');
+    const [playerName, setPlayerName] = useState(user?.name || '');
     const [joinCode, setJoinCode] = useState('');
     const [examType, setExamType] = useState('ssc');
     const [testFormat, setTestFormat] = useState('full');

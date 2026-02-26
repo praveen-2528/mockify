@@ -5,12 +5,13 @@ import { useRoom } from '../context/RoomContext';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { CheckCircle, XCircle, ChevronLeft, Award, Clock, Trophy } from 'lucide-react';
-import { saveTestResult } from '../utils/history';
+import { useAuth } from '../context/AuthContext';
 import './Results.css';
 
 const Results = () => {
     const { questions, answers, resetExam, testStarted, timeSpent, isMultiplayer, roomCode, markingScheme } = useExam();
     const room = useRoom();
+    const { authFetch } = useAuth();
     const navigate = useNavigate();
     const historySavedRef = useRef(false);
 
@@ -68,22 +69,25 @@ const Results = () => {
 
         const totalTimeSec = timeSpent.reduce((a, b) => a + (b || 0), 0);
 
-        saveTestResult({
-            examType: questions[0]?.examType || 'ssc',
-            testFormat: 'mock',
-            score: rawScore,
-            total: questions.length,
-            correct,
-            incorrect,
-            unattempted,
-            totalMarks,
-            maxMarks,
-            percentage: parseFloat(percentage),
-            totalTime: totalTimeSec,
-            markingScheme: ms,
-            topicBreakdown,
-            isMultiplayer,
-        });
+        authFetch('/api/history', {
+            method: 'POST',
+            body: JSON.stringify({
+                examType: questions[0]?.examType || 'ssc',
+                testFormat: 'mock',
+                score: rawScore,
+                total: questions.length,
+                correct,
+                incorrect,
+                unattempted,
+                totalMarks,
+                maxMarks,
+                percentage: parseFloat(percentage),
+                totalTime: totalTimeSec,
+                markingScheme: ms,
+                topicBreakdown,
+                isMultiplayer,
+            }),
+        }).catch(() => { }); // silent fail
     }, []);
 
     // Time heatmap data
