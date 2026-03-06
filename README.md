@@ -203,52 +203,98 @@ npm run preview  # Preview the production build locally
 
 ## 🔄 How It Works
 
+### Workflow 1: Solo Test (Setup Page `/`)
+
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    SETUP PAGE (/)                        │
-│                                                         │
-│  Step 1: Pick Exam ──▶ Step 2: Pick Format              │
-│                            │                            │
-│                  Step 3: Upload/Paste JSON               │
-│                            │                            │
-│              ┌─────────────┴──────────────┐             │
-│              │   JSON Validation Engine   │             │
-│              │  • Parse & extract array   │             │
-│              │  • Validate option count   │             │
-│              │  • Map correct answers     │             │
-│              │  • Fisher-Yates shuffle    │             │
-│              └─────────────┬──────────────┘             │
-└────────────────────────────┼────────────────────────────┘
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│                   TEST PAGE (/test)                      │
-│                                                         │
-│  ┌──────────────────────┐  ┌────────────────────────┐   │
-│  │   Question Area      │  │   Question Palette     │   │
-│  │  • Question text     │  │  • Grid of numbered    │   │
-│  │  • Option buttons    │  │    buttons              │   │
-│  │  • Navigation        │  │  • Answered/Review/     │   │
-│  │  • Mark for Review   │  │    Current indicators   │   │
-│  │  • Per-Q timer       │  │  • Stats summary        │   │
-│  └──────────────────────┘  │  • Progress Check btn   │   │
-│                            │  • Submit btn            │   │
-│  Timer ─ Pause/Resume      └────────────────────────┘   │
-│  Blur overlay on pause                                   │
-└────────────────────────────┼────────────────────────────┘
-                             ▼
-┌─────────────────────────────────────────────────────────┐
-│                 RESULTS PAGE (/results)                   │
-│                                                         │
-│  ┌────────────┐  ┌──────────────────────────────────┐   │
-│  │ Score Ring  │  │ Stats: Attempted · Correct ·     │   │
-│  │  12/20     │  │        Incorrect · Skipped        │   │
-│  │  60.0%     │  └──────────────────────────────────┘   │
-│  └────────────┘                                         │
-│                                                         │
-│  Detailed Review: Each question with ⏱️ time,           │
-│  color-coded options, and full explanations              │
-└─────────────────────────────────────────────────────────┘
+Step 1: Select Exam ──▶ Step 2: Select Format ──▶ Step 3: Load Data
+  │ SSC CGL Tier-1          │ Full Mock                 │
+  │ SSC CGL Tier-2          │ Subject Wise              ├─ Upload .json file
+  │ SSC CHSL                │ Topic Wise                ├─ Paste JSON data
+  │ IBPS PO/Clerk/SO        │                           ├─ Launch saved mock
+  │ (any exam template)     │                           │
+                                                        ▼
+                                              ┌──────────────────┐
+                                              │ Validation Engine │
+                                              │ • Parse JSON/CSV  │
+                                              │ • Validate options │
+                                              │ • Map answers      │
+                                              │ • Fisher-Yates     │
+                                              │   shuffle          │
+                                              └────────┬─────────┘
+                                                       ▼
+                                                 /test → /results
 ```
+
+### Workflow 2: Multiplayer Room (Lobby `/lobby`)
+
+**Creating a Room (Host):**
+
+```
+Step 1           Step 2           Step 3              Step 4          Step 5
+Select Exam ──▶ Select Format ──▶ AI Prompt ──────▶ Paste CSV ──▶ Create Room
+  │                │              Generated &         Output          │
+  │                │              copied to           parsed &        ├─ Enter name
+  │                │              clipboard           auto-saved      ├─ Pick mode
+  │                │                                  to bank         │  (Friendly/Exam)
+  │                │              OR load from                        ▼
+  │                │              saved mock ─────────────────▶ Waiting Lobby
+  │                                                              │
+  │                                                              ├ Share & Invite
+  │                                                              │  ├ Copy Invite Message
+  │                                                              │  ├ LAN link (same WiFi)
+  │                                                              │  ├ Internet link (Go Online)
+  │                                                              │  └ Room code
+  │                                                              │
+  │                                                              └ Host clicks Start
+```
+
+**Joining a Room (Friend):**
+
+```
+Option A: Open invite link ──▶ Auto-redirect to login ──▶ /lobby?room=CODE (auto-filled)
+Option B: Go to /lobby ──▶ "Join Room" tab ──▶ Enter room code + name
+Option C: Paste invite link ──▶ Auto-connects to remote server
+```
+
+### Workflow 3: AI Prompt Generator (`/ai-generator`)
+
+```
+Step 1: Configure           Step 2: Copy Prompt      Step 3: Paste Output      Step 4: Import
+  │ Select exam               │ Generated prompt       │ Paste AI's CSV          │ Preview parsed
+  │ Select format              │ copied to clipboard    │ response                │ questions
+  │ Pick subject/topic         │                        │                         │ Save to Question
+  │ Set question count         │ Paste into ChatGPT,    │ Auto-cleans markdown    │ Bank or export
+  │                            │ Gemini, Claude, etc.   │ code fences             │ as CSV file
+```
+
+### Workflow 4: Question Bank (`/question-bank`)
+
+```
+Upload Questions ──▶ Browse & Search ──▶ Edit/Delete ──▶ Generate Tests
+  │                     │                    │               │
+  ├ Import JSON file    ├ Search by text     ├ Edit inline   ├ Pick subject
+  ├ Import CSV file     ├ Filter by subject  ├ Delete single ├ Set count (e.g. 25)
+  ├ Paste JSON/CSV      ├ Filter by topic    └ Bulk delete   └ Random unique test
+  └ Auto-saved from     └ Sort by date                         from your bank
+    AI Generator
+```
+
+### Workflow 5: Mock Builder (`/mock-builder`)
+
+```
+Select Template ──▶ Name Your Mock ──▶ Auto-Generates ──▶ Saved Mock
+  │ SSC CGL, IBPS PO,       │              │ Pulls questions     │ Available in
+  │ etc.                     │              │ from your bank      │ Setup & Lobby
+  │                          │              │ per subject quota   │ for instant play
+```
+
+### Exam Modes
+
+| Mode | Flow | Answer Reveal | Pacing |
+|------|------|---------------|--------|
+| **Solo** | Setup → Test → Results | Shown after submit | Self-paced with timer |
+| **Friendly** | Lobby → All answer → Reveal → Host advances | After each question | Synchronized |
+| **Real Exam** | Lobby → Individual pace → Submit → Leaderboard | After everyone submits | Individual with timer |
 
 ---
 
