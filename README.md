@@ -23,7 +23,7 @@
 
 <p align="center">
   <strong>A premium, multiplayer-ready mock-test platform built for serious exam preparation.</strong><br/>
-  Multiplayer Rooms · Authentication · Global Leaderboards · Question Bank · Glassmorphism UI
+  Multiplayer Rooms · LAN & Internet Sharing · AI Prompt Generator · Question Bank · Glassmorphism UI
 </p>
 
 <p align="center">
@@ -48,8 +48,15 @@
 
 ### 📚 Personal Question Bank
 - **Your Own Database** — Stop pasting JSON every time. Upload your catalog once and it saves to your account.
+- **CSV & JSON Import** — Import questions via JSON or CSV format. Paste CSV output from any AI tool and parse it instantly.
 - **Management Console** — Browse, search, filter, edit, and delete your questions.
 - **Instant Test Generation** — Pick a subject, type the number of questions (e.g., 25), and hit generate. Mockify instantly builds a random unique test from your bank.
+
+### 🤖 AI Prompt Generator
+- **4-Step Workflow** — Configure → Copy Prompt → Paste AI Output → Import to Question Bank.
+- **Zero API Cost** — Generates a structured prompt you paste into any free AI tool (ChatGPT, Gemini, etc.).
+- **CSV Output** — AI returns questions in CSV format, which Mockify parses and imports automatically.
+- **Customizable** — Choose exam type, subject, topic, difficulty, and number of questions.
 
 ### 🏆 Global Leaderboard
 - Compare your performance against all Mockify users!
@@ -93,6 +100,20 @@ Works beautifully on desktop, tablet, and mobile. The question palette slides in
 
 Create or join rooms over the internet with a **6-character room code** (like Kahoot!). Two modes:
 
+### 🔗 Share & Invite Friends
+
+The lobby has a built-in **Share & Invite** section with multiple ways to invite friends:
+
+| Method | Who Can Join | How |
+|--------|-------------|-----|
+| **📋 Copy Invite Message** | Anyone | One-click copies a formatted message with link + room code — paste in WhatsApp/Telegram |
+| **🏠 LAN Link** | Same WiFi | Visible copyable link like `http://192.168.x.x:5173/lobby?room=CODE` |
+| **🌐 Internet Link** | Anyone worldwide | Click "Go Online" to create a Cloudflare tunnel — public link appears instantly |
+| **🔑 Room Code** | Anyone with app access | Enter the 6-char code manually in the Join tab |
+
+- **Auto-Join** — When friends open an invite link, they're redirected to login and then **automatically taken to the room** with the code pre-filled.
+- **Powered by Cloudflare Tunnel** — No port forwarding needed. Works through NAT/firewalls.
+
 ### 🎉 Friendly Mode
 | Step | What Happens |
 |------|--------------|
@@ -130,12 +151,15 @@ Perfect for competitive practice — simulate real exam conditions!
 | **Framework** | React 19.2 with functional components & hooks |
 | **Bundler** | Vite 7.3 — blazing fast HMR & optimized production builds |
 | **Backend** | Node.js + Express + Socket.IO 4.8 (multiplayer rooms) |
-| **Routing** | React Router DOM v7 (6 routes) |
+| **Database** | SQLite (better-sqlite3) for user accounts, question bank, leaderboards |
+| **Auth** | JWT + bcrypt — secure token-based authentication |
+| **Tunneling** | Cloudflare Quick Tunnels — share rooms over the internet, no port forwarding |
+| **Routing** | React Router DOM v7 (12+ routes) |
 | **Styling** | 100% Vanilla CSS with custom glassmorphism design system |
 | **Icons** | Lucide React (tree-shakeable, lightweight) |
-| **State** | React Context API (`ExamContext` + `RoomContext`) |
+| **State** | React Context API (`ExamContext` + `RoomContext` + `AuthContext`) |
 | **Realtime** | Socket.IO client/server for WebSocket communication |
-| **Persistence** | localStorage for save/resume (up to 20 exams) |
+| **Persistence** | SQLite (server) + localStorage (client save/resume) |
 | **Fonts** | Outfit (headings) + JetBrains Mono (code/timers) via Google Fonts |
 | **Linting** | ESLint 9 with React Hooks + React Refresh plugins |
 
@@ -165,7 +189,8 @@ npm run dev:full
 |------|-----|--------------|
 | Solo | `http://localhost:5173` | Vite dev server only |
 | Multiplayer | `http://localhost:5173` + `:3001` | Vite + Socket.IO server |
-| LAN Play | `http://<your-ip>:5173` | Use `npx vite --host` for LAN access |
+| LAN Play | `http://<your-ip>:5173` | Auto-exposed to LAN (`host: true` in Vite config) |
+| Internet | Click "Go Online" in lobby | Creates a Cloudflare tunnel — shareable public URL |
 
 ### Production Build
 
@@ -345,37 +370,47 @@ Output (gzipped):
 ```
 mockify/
 ├── index.html                  # Entry HTML with Google Fonts
-├── vite.config.js              # Vite config + Socket.IO proxy
+├── vite.config.js              # Vite config + proxy + LAN/tunnel settings
 ├── eslint.config.js            # ESLint 9 flat config
 ├── package.json                # Dependencies & scripts
-├── questions.json              # Sample question bank (75 questions)
 ├── server/
-│   ├── package.json            # Server dependencies
-│   └── index.js                # Express + Socket.IO room server
+│   ├── package.json            # Server dependencies (cloudflared, socket.io, etc.)
+│   ├── index.js                # Express + Socket.IO + Cloudflare Tunnel server
+│   └── db.js                   # SQLite database (users, questions, scores)
 ├── public/
-│   └── vite.svg                # Favicon
+│   └── sample_template.csv     # Sample CSV template for question import
 └── src/
     ├── main.jsx                # React entry point (StrictMode)
-    ├── App.jsx                 # Router setup (6 routes)
+    ├── App.jsx                 # Router setup (12+ routes) with ProtectedRoute
     ├── App.css                 # Root layout
     ├── index.css               # Global design system & animations
     ├── utils/
-    │   └── storage.js          # localStorage save/resume engine
+    │   ├── storage.js          # localStorage save/resume engine
+    │   ├── csvParser.js        # CSV parsing for AI-generated questions
+    │   └── examTemplates.js   # Exam type templates (SSC, IBPS, etc.)
     ├── context/
+    │   ├── AuthContext.jsx     # JWT auth state + smart local/remote API URL
     │   ├── ExamContext.jsx     # Exam state (questions, answers, timer)
-    │   └── RoomContext.jsx     # Socket.IO room state & events
+    │   └── RoomContext.jsx     # Socket.IO + tunnel state + auto-detection
     ├── components/
     │   └── ui/
     │       ├── Button.jsx/css  # Variants: primary, outline, ghost
     │       ├── Card.jsx/css    # Glass card with gradient border
     │       └── Input.jsx/css   # Form input with error states
     └── pages/
-        ├── Setup.jsx/css       # 3-step config + nav to rooms/saved
+        ├── Login.jsx/css       # Auth (login/register) + redirect-back
+        ├── Setup.jsx/css       # Exam config + nav to rooms/saved
+        ├── Lobby.jsx/css       # Create/Join room + Share & Invite section
         ├── Test.jsx/css        # Test engine + friendly/exam modes
         ├── Results.jsx/css     # Score summary + detailed review
-        ├── Lobby.jsx/css       # Create/Join room + waiting lobby
+        ├── Dashboard.jsx/css   # User dashboard + stats overview
+        ├── QuestionBank.jsx/css # Question management console
+        ├── AIGenerator.jsx/css # AI Prompt Generator (4-step wizard)
+        ├── MockBuilder.jsx/css # Custom mock test builder
+        ├── Settings.jsx/css    # Profile & password management
         ├── SavedExams.jsx/css  # Saved exams gallery with resume
-        └── Leaderboard.jsx/css # Podium + ranked comparison table
+        ├── Leaderboard.jsx/css # Room leaderboard (podium + table)
+        └── GlobalLeaderboard.jsx/css # Cross-user rankings
 ```
 
 ---
