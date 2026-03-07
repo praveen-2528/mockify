@@ -5,7 +5,6 @@ import { useExam } from '../context/ExamContext';
 import { useAuth } from '../context/AuthContext';
 import { EXAM_TEMPLATES } from '../utils/examTemplates';
 import { parseCSVString } from '../utils/csvParser';
-import { Upload, FileJson } from 'lucide-react';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import { Users, Plus, LogIn, Copy, Check, Wifi, WifiOff, Crown, User, Zap, BookOpen, ChevronLeft, Globe, Link2, Loader, Unplug, FileSpreadsheet, Sparkles, ClipboardCheck, LayoutTemplate, ChevronRight, Layers, Target, Library, Share2, Monitor } from 'lucide-react';
@@ -43,7 +42,6 @@ const Lobby = () => {
     const [generatedPrompt, setGeneratedPrompt] = useState('');
     const [promptCopied, setPromptCopied] = useState(false);
     const [aiOutput, setAiOutput] = useState('');
-    const [jsonInput, setJsonInput] = useState('');
     const [parsedQuestions, setParsedQuestions] = useState([]);
     const [parseErrors, setParseErrors] = useState([]);
     // Question Bank generation
@@ -218,37 +216,6 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
         }
     };
 
-    // ── JSON Upload/Paste Handler ─────────────────────────────────────
-    const handleJsonParse = () => {
-        setError('');
-        try {
-            const parsed = JSON.parse(jsonInput);
-            let arr = Array.isArray(parsed) ? parsed : null;
-            if (!arr && typeof parsed === 'object' && parsed !== null) {
-                arr = parsed.questions || parsed.data || Object.values(parsed).find(v => Array.isArray(v));
-            }
-            if (!arr || !Array.isArray(arr)) throw new Error('Data must contain an array of questions.');
-
-            const optCount = currentTemplate?.optionsPerQuestion || 4;
-            const formatted = arr.map((q, i) => {
-                if (!q.question && !q.text) throw new Error(`Q${i + 1}: missing 'question' or 'text'.`);
-                let opts = [], keys = [];
-                if (Array.isArray(q.options)) { opts = q.options; }
-                else if (typeof q.options === 'object') { keys = Object.keys(q.options).sort(); opts = keys.map(k => q.options[k]); }
-                else throw new Error(`Q${i + 1}: invalid options.`);
-                if (opts.length !== optCount) throw new Error(`Q${i + 1}: has ${opts.length} options, need ${optCount}.`);
-                let ci = -1;
-                if (q.correct_index !== undefined) ci = q.correct_index;
-                else if (q.correctAnswer !== undefined) ci = q.correctAnswer;
-                else if (q.correct_option !== undefined && keys.length) ci = keys.indexOf(q.correct_option);
-                if (ci < 0 || ci >= optCount) throw new Error(`Q${i + 1}: invalid correct answer.`);
-                return { id: q.id || i, text: q.question || q.text, options: opts, correctAnswer: ci, subject: q.subject || q.subtopic || 'General', explanation: q.explanation || '' };
-            });
-            setParsedQuestions(formatted);
-            setCreateStep(4);
-        } catch (err) { setError(err.message); }
-    };
-
     // ── Question Bank Generate Handler ────────────────────────────────
     const handleBankGenerate = async () => {
         setError('');
@@ -265,15 +232,6 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
             setCreateStep(4);
         } catch (err) { setError(err.message); }
         setBankLoading(false);
-    };
-
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (ev) => setJsonInput(ev.target.result);
-            reader.readAsText(file);
-        }
     };
 
     const saveToBank = async (questions) => {
@@ -720,9 +678,6 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                                     <button className={`source-tab ${questionSource === 'ai' ? 'active' : ''}`} onClick={() => setQuestionSource('ai')}>
                                         <Sparkles size={14} /> AI Prompt
                                     </button>
-                                    <button className={`source-tab ${questionSource === 'json' ? 'active' : ''}`} onClick={() => setQuestionSource('json')}>
-                                        <FileJson size={14} /> Upload / Paste JSON
-                                    </button>
                                     <button className={`source-tab ${questionSource === 'bank' ? 'active' : ''}`} onClick={() => setQuestionSource('bank')}>
                                         <Library size={14} /> Question Bank
                                     </button>
@@ -775,30 +730,6 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
 
                                         <Button variant="primary" className="full-width" onClick={handleParseOutput} disabled={!aiOutput.trim()}>
                                             <FileSpreadsheet size={16} /> Parse & Import
-                                        </Button>
-                                    </div>
-                                )}
-
-                                {/* ─── JSON Upload/Paste Source ─── */}
-                                {questionSource === 'json' && (
-                                    <div className="source-content animate-fade-in">
-                                        <div className="upload-section">
-                                            <input type="file" id="json-upload-lobby" accept=".json" style={{ display: 'none' }} onChange={handleFileUpload} />
-                                            <label htmlFor="json-upload-lobby" className="upload-label">
-                                                <Upload size={24} />
-                                                <span>Upload questions.json</span>
-                                            </label>
-                                        </div>
-                                        <div className="divider"><span>OR PASTE JSON</span></div>
-                                        <textarea
-                                            className="json-textarea"
-                                            rows={6}
-                                            value={jsonInput}
-                                            onChange={e => setJsonInput(e.target.value)}
-                                            placeholder='[{"question": "...", "options": {"A":"...", ...}, "correct_option": "A"}]'
-                                        />
-                                        <Button variant="primary" className="full-width" onClick={handleJsonParse} disabled={!jsonInput.trim()}>
-                                            <FileJson size={16} /> Validate & Load Questions
                                         </Button>
                                     </div>
                                 )}

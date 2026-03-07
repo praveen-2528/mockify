@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useExam } from '../context/ExamContext';
 import { useAuth } from '../context/AuthContext';
 import { EXAM_TEMPLATES } from '../utils/examTemplates';
+import { parseCSVString } from '../utils/csvParser';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { BookOpen, Upload, FileJson, AlertCircle, Users, Folder, BarChart3, LogOut, Settings as SettingsIcon, Trophy, Library, LayoutTemplate, Sparkles, Loader } from 'lucide-react';
+import { BookOpen, AlertCircle, Users, Folder, BarChart3, LogOut, Settings as SettingsIcon, Trophy, Library, LayoutTemplate, Sparkles, Loader, UserPlus, FileSpreadsheet } from 'lucide-react';
 import './Setup.css';
 
 const Setup = () => {
@@ -14,8 +15,8 @@ const Setup = () => {
     const navigate = useNavigate();
 
     const [step, setStep] = useState(1);
-    const [jsonInput, setJsonInput] = useState('');
     const [error, setError] = useState('');
+    const [csvInput, setCsvInput] = useState('');
 
     // Mocks state
     const [savedMocks, setSavedMocks] = useState([]);
@@ -91,90 +92,6 @@ const Setup = () => {
         }
     };
 
-    const validateAndStart = () => {
-        setError('');
-        let parsedData;
-
-        try {
-            parsedData = JSON.parse(jsonInput);
-
-            let questionsArray = Array.isArray(parsedData) ? parsedData : null;
-            if (!questionsArray && typeof parsedData === 'object' && parsedData !== null) {
-                if (Array.isArray(parsedData.questions)) {
-                    questionsArray = parsedData.questions;
-                } else if (Array.isArray(parsedData.data)) {
-                    questionsArray = parsedData.data;
-                } else {
-                    questionsArray = Object.values(parsedData).find(val => Array.isArray(val));
-                }
-            }
-
-            if (!questionsArray || !Array.isArray(questionsArray)) {
-                throw new Error("Data must be an array of questions, or an object containing an array.");
-            }
-
-            // Determine expected options length from template if possible, otherwise old logic
-            const template = EXAM_TEMPLATES[examType];
-            const expectedOptionsLength = template ? template.optionsPerQuestion : (examType === 'ssc' ? 4 : 5);
-
-            const formattedData = questionsArray.map((q, i) => {
-                if (!q.question && !q.text) {
-                    throw new Error(`Question ${i + 1} is missing the 'question' or 'text' property.`);
-                }
-
-                let optionsArray = [];
-                let optionKeys = [];
-
-                if (Array.isArray(q.options)) {
-                    optionsArray = q.options;
-                } else if (typeof q.options === 'object' && q.options !== null) {
-                    optionKeys = Object.keys(q.options).sort();
-                    optionsArray = optionKeys.map(k => q.options[k]);
-                } else {
-                    throw new Error(`Question ${i + 1} has an invalid 'options' format.`);
-                }
-
-                if (optionsArray.length !== expectedOptionsLength) {
-                    throw new Error(`Question ${i + 1} has ${optionsArray.length} options, but the selected exam type requires ${expectedOptionsLength}.`);
-                }
-
-                let correctIndex = -1;
-                if (q.correct_index !== undefined) {
-                    correctIndex = q.correct_index;
-                } else if (q.correctAnswer !== undefined) {
-                    correctIndex = q.correctAnswer;
-                } else if (q.correct_option !== undefined && optionKeys.length > 0) {
-                    correctIndex = optionKeys.indexOf(q.correct_option);
-                }
-
-                if (correctIndex < 0 || correctIndex >= expectedOptionsLength) {
-                    throw new Error(`Question ${i + 1} has an invalid or missing correct answer.`);
-                }
-
-                return {
-                    id: q.id || i,
-                    text: q.question || q.text,
-                    options: optionsArray,
-                    correctAnswer: correctIndex,
-                    subject: q.subject || q.subtopic || q.difficulty || 'General',
-                    explanation: q.explanation || "No explanation provided for this question."
-                };
-            });
-
-            // Fisher-Yates Shuffle
-            for (let i = formattedData.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [formattedData[i], formattedData[j]] = [formattedData[j], formattedData[i]];
-            }
-
-            updateExamState({ questions: formattedData, testStarted: true, markingScheme: getActiveScheme() });
-            navigate('/test');
-
-        } catch (err) {
-            setError(err.message);
-        }
-    };
-
     const startFromBank = async () => {
         setError('');
         setBankLoading(true);
@@ -192,12 +109,24 @@ const Setup = () => {
         setBankLoading(false);
     };
 
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (e) => setJsonInput(e.target.result);
-            reader.readAsText(file);
+    const handleCSVParse = () => {
+        if (!csvInput.trim()) return;
+        setError('');
+        let cleaned = csvInput.trim();
+        if (cleaned.startsWith('```')) {
+            cleaned = cleaned.replace(/^```(?:csv)?\n?/, '').replace(/\n?```$/, '');
+        }
+        const result = parseCSVString(cleaned);
+        if (result.questions.length > 0) {
+            // Shuffle
+            for (let i = result.questions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [result.questions[i], result.questions[j]] = [result.questions[j], result.questions[i]];
+            }
+            updateExamState({ questions: result.questions, testStarted: true, markingScheme: getActiveScheme() });
+            navigate('/test');
+        } else {
+            setError(result.errors.length > 0 ? result.errors.slice(0, 2).join('; ') : 'No valid questions found. Check the CSV format.');
         }
     };
 
@@ -285,35 +214,26 @@ const Setup = () => {
                                     </select>
                                     <Button variant="primary" onClick={startSavedMock} disabled={!selectedMockId}>Launch Saved Mock</Button>
                                 </div>
-                                <div className="divider"><span>OR CUSTOM UPLOAD</span></div>
                             </div>
                         )}
 
-                        <div className="data-input-area">
-                            <div className="upload-section">
-                                <input type="file" id="json-upload" accept=".json" style={{ display: 'none' }} onChange={handleFileUpload} />
-                                <label htmlFor="json-upload" className="upload-label">
-                                    <Upload size={24} />
-                                    <span>Upload questions.json</span>
-                                </label>
-                            </div>
-                            <div className="divider"><span>OR</span></div>
-                            <div className="paste-section">
-                                <div className="paste-header">
-                                    <FileJson size={18} />
-                                    <span>Paste JSON Data</span>
-                                </div>
-                                <textarea
-                                    className="json-textarea"
-                                    value={jsonInput}
-                                    onChange={(e) => setJsonInput(e.target.value)}
-                                    placeholder="[{&#34;text&#34;: &#34;Question?&#34;, &#34;options&#34;: [...], &#34;correctAnswer&#34;: 0}]"
-                                ></textarea>
-                            </div>
+                        {/* Paste CSV Section */}
+                        <h4 className="marking-title"><FileSpreadsheet size={16} /> Paste CSV Data</h4>
+                        <div className="csv-paste-section">
+                            <textarea
+                                className="json-textarea"
+                                rows={5}
+                                value={csvInput}
+                                onChange={e => setCsvInput(e.target.value)}
+                                placeholder="question,option_a,option_b,option_c,option_d,correct_option,explanation&#10;What is 2+2?,3,4,5,6,B,2+2 equals 4"
+                            />
+                            <Button variant="primary" onClick={handleCSVParse} disabled={!csvInput.trim()} style={{ marginTop: '0.5rem' }}>
+                                <FileSpreadsheet size={14} /> Parse CSV & Start Test
+                            </Button>
                         </div>
 
                         {/* Generate from Question Bank */}
-                        <div className="divider"><span>OR FROM QUESTION BANK</span></div>
+                        <h4 className="marking-title"><Library size={16} /> Generate from Question Bank</h4>
                         {bankSubjects.length > 0 ? (
                             <div className="bank-generate-section">
                                 <div className="gen-row">
@@ -373,9 +293,6 @@ const Setup = () => {
 
                         <div className="step-actions split">
                             <Button variant="ghost" onClick={() => setStep(2)}>Back</Button>
-                            <Button variant="primary" onClick={validateAndStart} disabled={!jsonInput.trim()}>
-                                Start Custom Test
-                            </Button>
                         </div>
                     </div>
                 )}
@@ -401,6 +318,10 @@ const Setup = () => {
                 <button className="secondary-action-btn" onClick={() => navigate('/lobby')}>
                     <Users size={20} />
                     <span>Multiplayer</span>
+                </button>
+                <button className="secondary-action-btn" onClick={() => navigate('/friends')}>
+                    <UserPlus size={20} />
+                    <span>Friends</span>
                 </button>
                 <button className="secondary-action-btn" onClick={() => navigate('/saved')}>
                     <Folder size={20} />

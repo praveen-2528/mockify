@@ -350,6 +350,104 @@ app.get('/api/leaderboard', (req, res) => {
     res.json({ leaderboard: rows });
 });
 
+// ── Friends: Send Request ───────────────────────────────────────────
+app.post('/api/friends/request', verifyToken, (req, res) => {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ error: 'Email is required.' });
+
+    const friend = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get(email.toLowerCase().trim(), req.userId);
+    if (!friend) return res.status(404).json({ error: 'User not found.' });
+
+    // Check if already friends or pending
+    const existing = db.prepare('SELECT id, status FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)').get(req.userId, friend.id, friend.id, req.userId);
+    if (existing) {
+        if (existing.status === 'accepted') return res.status(409).json({ error: 'Already friends.' });
+        return res.status(409).json({ error: 'Friend request already pending.' });
+    }
+
+    db.prepare('INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, ?)').run(req.userId, friend.id, 'pending');
+    res.status(201).json({ success: true });
+});
+
+// ── Friends: Accept Request ─────────────────────────────────────────
+app.post('/api/friends/accept/:id', verifyToken, (req, res) => {
+    const fr = db.prepare('SELECT * FROM friends WHERE id = ? AND friend_id = ? AND status = ?').get(req.params.id, req.userId, 'pending');
+    if (!fr) return res.status(404).json({ error: 'Friend request not found.' });
+
+    db.prepare('UPDATE friends SET status = ? WHERE id = ?').run('accepted', fr.id);
+    res.json({ success: true });
+});
+
+// ── Friends: Remove ─────────────────────────────────────────────────
+app.delete('/api/friends/:id', verifyToken, (req, res) => {
+    const result = db.prepare('DELETE FROM friends WHERE id = ? AND (user_id = ? OR friend_id = ?)').run(req.params.id, req.userId, req.userId);
+    if (result.changes === 0) return res.status(404).json({ error: 'Not found.' });
+    res.json({ success: true });
+});
+
+// ── Friends: List ───────────────────────────────────────────────────
+app.get('/api/friends', verifyToken, (req, res) => {
+    // Friends where I am user_id or friend_id and status is accepted
+    const accepted = db.prepare(`
+        SELECT f.id as friendshipId, f.created_at,
+            CASE WHEN f.user_id = ? THEN f.friend_id ELSE f.user_id END as friendUserId,
+            CASE WHEN f.user_id = ? THEN u2.name ELSE u1.name END as friendName,
+            CASE WHEN f.user_id = ? THEN u2.email ELSE u1.email END as friendEmail
+        FROM friends f
+        JOIN users u1 ON f.user_id = u1.id
+        JOIN users u2 ON f.friend_id = u2.id
+        WHERE (f.user_id = ? OR f.friend_id = ?) AND f.status = 'accepted'
+    `).all(req.userId, req.userId, req.userId, req.userId, req.userId);
+
+    // Pending requests TO me
+    const pending = db.prepare(`
+        SELECT f.id as friendshipId, f.created_at, u.name as fromName, u.email as fromEmail, u.id as fromId
+        FROM friends f
+        JOIN users u ON f.user_id = u.id
+        WHERE f.friend_id = ? AND f.status = 'pending'
+    `).all(req.userId);
+
+    // Requests I sent (pending)
+    const sent = db.prepare(`
+        SELECT f.id as friendshipId, f.created_at, u.name as toName, u.email as toEmail
+        FROM friends f
+        JOIN users u ON f.friend_id = u.id
+        WHERE f.user_id = ? AND f.status = 'pending'
+    `).all(req.userId);
+
+    res.json({ friends: accepted, pending, sent });
+});
+
+// ── Friends: Get Friend Stats ───────────────────────────────────────
+app.get('/api/friends/:userId/stats', verifyToken, (req, res) => {
+    const targetId = parseInt(req.params.userId);
+    // Verify friendship
+    const friendship = db.prepare(
+        'SELECT id FROM friends WHERE ((user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)) AND status = ?'
+    ).get(req.userId, targetId, targetId, req.userId, 'accepted');
+    if (!friendship) return res.status(403).json({ error: 'Not friends with this user.' });
+
+    const user = db.prepare('SELECT id, name, email, created_at FROM users WHERE id = ?').get(targetId);
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    const stats = db.prepare(`
+        SELECT COUNT(*) as testsTaken,
+            ROUND(AVG(percentage), 1) as avgScore,
+            ROUND(MAX(percentage), 1) as bestScore,
+            SUM(total_time) as totalTime,
+            SUM(correct) as totalCorrect,
+            SUM(incorrect) as totalIncorrect
+        FROM test_history WHERE user_id = ?
+    `).get(targetId);
+
+    const recentTests = db.prepare(`
+        SELECT exam_type, score, total, percentage, total_time, created_at, is_multiplayer
+        FROM test_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 10
+    `).all(targetId);
+
+    res.json({ user, stats, recentTests });
+});
+
 // ── Questions: List (with filters) ──────────────────────────────────
 app.get('/api/questions', verifyToken, (req, res) => {
     const { subject, search, difficulty, topic, page = 1 } = req.query;
@@ -867,6 +965,18 @@ io.on('connection', (socket) => {
         callback?.({ success: true });
     });
 
+    // ── Friendly Mode: Host finishes exam for all ────────────────────
+    socket.on('friendlyFinish', ({ code }, callback) => {
+        const room = rooms.get(code);
+        if (!room || room.roomMode !== 'friendly') return callback?.({ success: false });
+        if (room.hostId !== socket.id) return callback?.({ success: false, error: 'Only host can finish.' });
+
+        room.lastActivity = Date.now();
+        io.to(code).emit('friendlyForceSubmit');
+        console.log(`[Friendly] Host force-finished exam in ${code}`);
+        callback?.({ success: true });
+    });
+
     // ── Chat (Friendly Mode) ──────────────────────────────────────────
     socket.on('chatSend', ({ code, text }) => {
         const room = rooms.get(code);
@@ -895,6 +1005,8 @@ io.on('connection', (socket) => {
             correct,
             incorrect,
             totalTime,
+            answers,
+            timeSpent,
             submittedAt: Date.now(),
         });
 

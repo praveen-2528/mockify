@@ -70,10 +70,23 @@ db.exec(`
         FOREIGN KEY (mock_test_id) REFERENCES mock_tests(id) ON DELETE CASCADE
     );
 
+    CREATE TABLE IF NOT EXISTS friends (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        friend_id INTEGER NOT NULL,
+        status TEXT DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY (friend_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE(user_id, friend_id)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_questions_mock ON questions(mock_test_id);
 
     CREATE INDEX IF NOT EXISTS idx_questions_user ON questions(user_id);
     CREATE INDEX IF NOT EXISTS idx_questions_subject ON questions(subject);
+    CREATE INDEX IF NOT EXISTS idx_friends_user ON friends(user_id);
+    CREATE INDEX IF NOT EXISTS idx_friends_friend ON friends(friend_id);
 `);
 
 // ─── Migrations ─────────────────────────────────────────────────────

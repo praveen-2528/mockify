@@ -75,7 +75,7 @@ const Test = () => {
         return () => clearInterval(autoSaveRef.current);
     }, [isMultiplayer, testStarted, examType, testFormat, questions, answers, markedForReview, timeSpent, currentQuestionIndex, timeLeft, _saveId]);
 
-    // ── Friendly Mode Socket Listeners ──────────────────────────────
+    // ── Friendly Mode Socket Listeners ──────────────────────────────────
     useEffect(() => {
         if (!isFriendly || !room.socket) return;
 
@@ -99,14 +99,20 @@ const Test = () => {
             updateExamState({ currentQuestionIndex: questionIndex });
         };
 
+        const onForceSubmit = () => {
+            handleSubmit(true);
+        };
+
         room.socket.on('friendlyAnswerStatus', onAnswerStatus);
         room.socket.on('friendlyReveal', onReveal);
         room.socket.on('friendlyNextQuestion', onNextQuestion);
+        room.socket.on('friendlyForceSubmit', onForceSubmit);
 
         return () => {
             room.socket.off('friendlyAnswerStatus', onAnswerStatus);
             room.socket.off('friendlyReveal', onReveal);
             room.socket.off('friendlyNextQuestion', onNextQuestion);
+            room.socket.off('friendlyForceSubmit', onForceSubmit);
         };
     }, [isFriendly, room.socket, updateExamState]);
 
@@ -525,11 +531,52 @@ const Test = () => {
                                 <SaveAll size={16} style={{ marginRight: '0.5rem' }} /> Progress Check
                             </Button>
                         )}
-                        <Button variant="primary" className="w-full" onClick={() => handleSubmit()} style={{ marginTop: '0.75rem' }}>
-                            {isFriendly ? 'Finish Test' : 'Submit Final Test'}
-                        </Button>
+                        {isFriendly && room.isHost ? (
+                            <Button variant="primary" className="w-full finish-all-btn" onClick={() => {
+                                if (window.confirm('This will submit the exam for ALL participants. Continue?')) {
+                                    room.socket?.emit('friendlyFinish', { code: roomCode }, () => { });
+                                }
+                            }} style={{ marginTop: '0.75rem' }}>
+                                🚨 Finish Exam for All
+                            </Button>
+                        ) : (
+                            <Button variant="primary" className="w-full" onClick={() => handleSubmit()} style={{ marginTop: '0.75rem' }}>
+                                {isFriendly ? 'Finish Test' : 'Submit Final Test'}
+                            </Button>
+                        )}
                     </div>
                 </aside>
+
+                {/* Multiplayer Player Answer Status Sidebar Panel */}
+                {isMultiplayer && (
+                    <aside className="mp-player-panel glass">
+                        <div className="mp-panel-header">
+                            <h4><Users size={16} /> Players — Q{currentQuestionIndex + 1}</h4>
+                        </div>
+                        <div className="mp-player-list">
+                            {isFriendly && room.participants?.map((p, idx) => {
+                                const hasAnswered = friendlyAnswerStatus.answeredPlayers?.includes(p.name);
+                                const revealData = friendlyRevealed && friendlyRevealData?.playerChoices?.[p.name];
+                                return (
+                                    <div key={idx} className={`mp-player-row ${revealData ? (revealData.isCorrect ? 'correct' : 'incorrect') : ''}`}>
+                                        <span className="mp-player-name">{p.isHost ? '👑 ' : ''}{p.name}</span>
+                                        <span className="mp-player-status">
+                                            {revealData ?
+                                                <>{revealData.isCorrect ? '✅' : '❌'} {String.fromCharCode(65 + revealData.choice)}</>
+                                                : hasAnswered ? <span className="answered-dot">✅</span> : <span className="waiting-dot">⏳</span>
+                                            }
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                            {isExamMode && room.participants?.map((p, idx) => (
+                                <div key={idx} className="mp-player-row">
+                                    <span className="mp-player-name">{p.isHost ? '👑 ' : ''}{p.name}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </aside>
+                )}
             </div>
 
             {/* Friendly Chat */}
