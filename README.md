@@ -47,8 +47,9 @@
 - **Profile Management** — Manage your details and securely change your password from the Settings page.
 
 ### 📚 Personal Question Bank
-- **Your Own Database** — Stop pasting JSON every time. Upload your catalog once and it saves to your account.
-- **CSV & JSON Import** — Import questions via JSON or CSV format. Paste CSV output from any AI tool and parse it instantly.
+- **Your Own Database** — Upload your catalog once and it saves to your account.
+- **CSV Import** — Import questions via CSV format. Paste CSV output from any AI tool and parse it instantly.
+- **File Upload** — Upload `.csv`, `.xlsx`, or `.xls` files directly.
 - **Management Console** — Browse, search, filter, edit, and delete your questions.
 - **Instant Test Generation** — Pick a subject, type the number of questions (e.g., 25), and hit generate. Mockify instantly builds a random unique test from your bank.
 
@@ -83,7 +84,7 @@
 - **Score Summary** — Total, Attempted, Correct, Incorrect, Skipped at a glance
 - **Time Analytics** — See exact time spent on each question (e.g., `01:42`) right next to the question
 - **Color-Coded Review** — Green border for correct, red for incorrect, grey for skipped
-- **Explanations** — Renders the logic/explanation from your JSON for every single question
+- **Explanations** — Renders the explanation for every question in the review
 
 ### 💾 Save & Resume
 - **Save & Exit** — Save your test mid-way and come back later
@@ -208,14 +209,15 @@ npm run preview  # Preview the production build locally
 ```
 Step 1: Select Exam ──▶ Step 2: Select Format ──▶ Step 3: Load Data
   │ SSC CGL Tier-1          │ Full Mock                 │
-  │ SSC CGL Tier-2          │ Subject Wise              ├─ Upload .json file
-  │ SSC CHSL                │ Topic Wise                ├─ Paste JSON data
-  │ IBPS PO/Clerk/SO        │                           ├─ Launch saved mock
-  │ (any exam template)     │                           │
+  │ SSC CGL Tier-2          │ Subject Wise              ├─ Paste CSV data
+  │ SSC CHSL Tier-1/2       │ Topic Wise                ├─ Generate from Question Bank
+  │ SSC Steno C & D         │                           ├─ Launch saved mock
+  │ IBPS PO Prelims         │                           │
+  │ RRB NTPC CBT-1          │                           │
                                                         ▼
                                               ┌──────────────────┐
                                               │ Validation Engine │
-                                              │ • Parse JSON/CSV  │
+                                              │ • Parse CSV       │
                                               │ • Validate options │
                                               │ • Map answers      │
                                               │ • Fisher-Yates     │
@@ -272,9 +274,9 @@ Step 1: Configure           Step 2: Copy Prompt      Step 3: Paste Output      S
 ```
 Upload Questions ──▶ Browse & Search ──▶ Edit/Delete ──▶ Generate Tests
   │                     │                    │               │
-  ├ Import JSON file    ├ Search by text     ├ Edit inline   ├ Pick subject
-  ├ Import CSV file     ├ Filter by subject  ├ Delete single ├ Set count (e.g. 25)
-  ├ Paste JSON/CSV      ├ Filter by topic    └ Bulk delete   └ Random unique test
+  ├ Import CSV file     ├ Search by text     ├ Edit inline   ├ Pick subject
+  ├ Import Excel file   ├ Filter by subject  ├ Delete single ├ Set count (e.g. 25)
+  ├ Paste CSV data      ├ Filter by topic    └ Bulk delete   └ Random unique test
   └ Auto-saved from     └ Sort by date                         from your bank
     AI Generator
 ```
@@ -300,52 +302,30 @@ Select Template ──▶ Name Your Mock ──▶ Auto-Generates ──▶ Save
 
 ## 📋 Data Format
 
-Mockify uses a **BYOD (Bring Your Own Data)** approach. Feed it any array of JSON question objects:
+Mockify uses **CSV format** for question data. Generate questions using any AI tool and paste the CSV output:
 
-```json
-[
-  {
-    "id": 1,
-    "question": "What is the capital of France?",
-    "options": {
-      "A": "London",
-      "B": "Berlin",
-      "C": "Paris",
-      "D": "Madrid"
-    },
-    "correct_option": "C",
-    "subtopic": "Geography",
-    "explanation": "Paris is the capital and most populous city of France."
-  },
-  {
-    "id": "IDP058",
-    "difficulty": "Easy",
-    "question": "Meaning: To be very easy",
-    "options": {
-      "A": "A piece of cake",
-      "B": "A piece of pie",
-      "C": "A piece of bread",
-      "D": "A piece of meat"
-    },
-    "correct_option": "A",
-    "explanation": "Piece of cake means very easy.",
-    "subtopic": "Idioms"
-  }
-]
+```csv
+question,option_a,option_b,option_c,option_d,correct_option,explanation,subject,topic,subtopic,difficulty,question_type,exam_type
+"What is the capital of France?",London,Berlin,Paris,Madrid,C,"Paris is the capital and most populous city of France.",General Awareness,Geography,Capitals,easy,MCQ,ssc_cgl_tier1
+"Meaning: To be very easy","A piece of cake","A piece of pie","A piece of bread","A piece of meat",A,"Piece of cake means very easy.",English,Idioms & Phrases,Idioms,easy,MCQ,ssc_cgl_tier1
 ```
 
-### Flexible Parsing
-The app intelligently extracts questions from multiple JSON structures:
-- ✅ Direct array: `[ {...}, {...} ]`
-- ✅ Object with `questions` key: `{ "questions": [...] }`
-- ✅ Object with `data` key: `{ "data": [...] }`
-- ✅ Object with any array value: `{ "myQuestions": [...] }`
+### CSV Columns
 
-### Validation Rules
-| Exam Type | Required Options | Option Keys |
-|-----------|-----------------|-------------|
-| **SSC** | 4 per question | A, B, C, D |
-| **IBPS** | 5 per question | A, B, C, D, E |
+| Column | Required | Description |
+|--------|----------|-------------|
+| `question` | ✅ | The question text |
+| `option_a` | ✅ | Option A |
+| `option_b` | ✅ | Option B |
+| `option_c` | ⚡ | Option C (required for 4+ option exams) |
+| `option_d` | ⚡ | Option D (required for 4+ option exams) |
+| `option_e` | ⚡ | Option E (required for 5-option exams like IBPS) |
+| `correct_option` | ✅ | Single letter: A, B, C, D, or E |
+| `explanation` | ❌ | Explanation for the answer |
+| `subject` | ❌ | Subject name (e.g., "General Awareness") |
+| `topic` | ❌ | Topic (e.g., "Indian History") |
+| `difficulty` | ❌ | easy, medium, or hard |
+| `exam_type` | ❌ | e.g., ssc_cgl_tier1, ibps_po_pre |
 
 ---
 
@@ -375,9 +355,9 @@ Output (gzipped):
 | 1 | App launches on `localhost:5173` without errors | ✅ Pass |
 | 2 | SSC exam type selection → validates 4 options per question | ✅ Pass |
 | 3 | IBPS exam type selection → validates 5 options per question | ✅ Pass |
-| 4 | JSON file upload (`.json`) loads data correctly | ✅ Pass |
-| 5 | Raw JSON paste + validation works | ✅ Pass |
-| 6 | Invalid JSON shows descriptive error messages | ✅ Pass |
+| 4 | CSV paste + validation works | ✅ Pass |
+| 5 | CSV file upload loads data correctly | ✅ Pass |
+| 6 | Invalid CSV shows descriptive error messages | ✅ Pass |
 | 7 | Questions are shuffled (Fisher-Yates) on every attempt | ✅ Pass |
 | 8 | Timer counts down correctly (1hr SSC / 2hr IBPS) | ✅ Pass |
 | 9 | Per-question time tracking updates in real-time | ✅ Pass |
@@ -445,7 +425,7 @@ mockify/
     │       └── Input.jsx/css   # Form input with error states
     └── pages/
         ├── Login.jsx/css       # Auth (login/register) + redirect-back
-        ├── Setup.jsx/css       # Exam config + nav to rooms/saved
+        ├── Setup.jsx/css       # Exam config + CSV paste + nav to rooms/saved
         ├── Lobby.jsx/css       # Create/Join room + Share & Invite section
         ├── Test.jsx/css        # Test engine + friendly/exam modes
         ├── Results.jsx/css     # Score summary + detailed review
@@ -453,9 +433,10 @@ mockify/
         ├── QuestionBank.jsx/css # Question management console
         ├── AIGenerator.jsx/css # AI Prompt Generator (4-step wizard)
         ├── MockBuilder.jsx/css # Custom mock test builder
+        ├── Friends.jsx/css     # Friends system + stats
         ├── Settings.jsx/css    # Profile & password management
         ├── SavedExams.jsx/css  # Saved exams gallery with resume
-        ├── Leaderboard.jsx/css # Room leaderboard (podium + table)
+        ├── Leaderboard.jsx/css # Room leaderboard (podium + detail view)
         └── GlobalLeaderboard.jsx/css # Cross-user rankings
 ```
 
@@ -463,10 +444,15 @@ mockify/
 
 ## 🎯 Supported Exams
 
-| Exam | Options | Timer |
-|------|---------|-------|
-| **SSC** (Staff Selection Commission) | 4 per question (A–D) | 60 minutes |
-| **IBPS** (Institute of Banking Personnel Selection) | 5 per question (A–E) | 120 minutes |
+| Exam | Options | Timer | Marking |
+|------|---------|-------|---------|
+| **SSC CGL Tier-1** | 4 (A–D) | 60 min | +2 / −0.50 |
+| **SSC CGL Tier-2** | 4 (A–D) | 150 min | +3 / −1 |
+| **SSC CHSL Tier-1** | 4 (A–D) | 60 min | +2 / −0.50 |
+| **SSC CHSL Tier-2** | 4 (A–D) | 150 min | +3 / −1 |
+| **SSC Steno C & D** | 4 (A–D) | 120 min | +1 / −0.25 |
+| **IBPS PO Prelims** | 5 (A–E) | 60 min | +1 / −0.25 |
+| **RRB NTPC CBT-1** | 4 (A–D) | 90 min | +1 / −0.33 |
 
 ---
 
