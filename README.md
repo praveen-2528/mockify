@@ -168,7 +168,7 @@ Perfect for competitive practice — simulate real exam conditions!
 ```bash
 # Clone the repository
 git clone https://github.com/praveen-2528/mockify.git
-cd mockify
+cd testara
 
 # Install frontend dependencies
 npm install
