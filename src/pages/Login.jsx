@@ -41,7 +41,7 @@ const Login = () => {
     return (
         <div className="login-container animate-fade-in">
             <div className="login-brand">
-                <h1>🎯 Mockify</h1>
+                <h1>🎯 Testara</h1>
                 <p>Your premium mock-test platform</p>
             </div>
 

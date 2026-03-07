@@ -351,7 +351,7 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
     const copyShareMessage = () => {
         const tunnelLink = room.tunnelUrl ? `${room.tunnelUrl}/lobby?room=${room.roomCode}` : null;
         const lanUrl = getLanUrl();
-        let msg = `🎯 Join my Mockify room!\n\n`;
+        let msg = `🎯 Join my Testara room!\n\n`;
         if (tunnelLink) {
             msg += `👉 Click to join: ${tunnelLink}\n\n`;
         }

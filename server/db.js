@@ -5,7 +5,7 @@ import { dirname, join } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const db = new Database(join(__dirname, 'mockify.db'));
+const db = new Database(join(__dirname, 'testara.db'));
 
 // Enable WAL mode for better concurrency
 db.pragma('journal_mode = WAL');

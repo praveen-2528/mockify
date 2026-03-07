@@ -9,7 +9,7 @@ import { Tunnel } from 'cloudflared';
 import os from 'os';
 import db from './db.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'mockify_secret_key_change_in_production';
+const JWT_SECRET = process.env.JWT_SECRET || 'testara_secret_key_change_in_production';
 
 const app = express();
 app.use(cors());
@@ -696,7 +696,7 @@ Return ONLY the JSON array. No other text.`;
             return res.status(500).json({ error: 'AI returned invalid format. Please try again.' });
         }
 
-        // Normalize to Mockify format
+        // Normalize to Testara format
         const questions = generated.map((q, i) => {
             const opts = q.options;
             let optionsArray, correctAnswer;
@@ -1094,5 +1094,5 @@ function sanitizeRoom(room) {
 // ─── Start Server ────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, '0.0.0.0', () => {
-    console.log(`\n  🚀 Mockify server running on http://localhost:${PORT}\n`);
+    console.log(`\n  🚀 Testara server running on http://localhost:${PORT}\n`);
 });

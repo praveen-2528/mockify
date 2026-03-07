@@ -1,4 +1,4 @@
-const STORAGE_KEY = 'mockify_saved_exams';
+const STORAGE_KEY = 'testara_saved_exams';
 const MAX_SAVED = 20;
 
 /**

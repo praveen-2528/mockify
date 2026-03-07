@@ -11,7 +11,7 @@ const API_URL = _isLocal ? `http://${_hostname}:3001` : '';
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(() => localStorage.getItem('mockify_token'));
+    const [token, setToken] = useState(() => localStorage.getItem('testara_token'));
     const [loading, setLoading] = useState(true);
 
     // Verify token on mount
@@ -33,7 +33,7 @@ export const AuthProvider = ({ children }) => {
                 setLoading(false);
             })
             .catch(() => {
-                localStorage.removeItem('mockify_token');
+                localStorage.removeItem('testara_token');
                 setToken(null);
                 setUser(null);
                 setLoading(false);
@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Registration failed');
 
-        localStorage.setItem('mockify_token', data.token);
+        localStorage.setItem('testara_token', data.token);
         setToken(data.token);
         setUser(data.user);
         return data;
@@ -64,14 +64,14 @@ export const AuthProvider = ({ children }) => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Login failed');
 
-        localStorage.setItem('mockify_token', data.token);
+        localStorage.setItem('testara_token', data.token);
         setToken(data.token);
         setUser(data.user);
         return data;
     }, []);
 
     const logout = useCallback(() => {
-        localStorage.removeItem('mockify_token');
+        localStorage.removeItem('testara_token');
         setToken(null);
         setUser(null);
     }, []);

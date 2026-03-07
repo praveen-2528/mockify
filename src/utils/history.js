@@ -1,4 +1,4 @@
-const HISTORY_KEY = 'mockify_test_history';
+const HISTORY_KEY = 'testara_test_history';
 const MAX_HISTORY = 50;
 
 /**

@@ -5,7 +5,7 @@ const OPTION_COLUMNS = ['option_a', 'option_b', 'option_c', 'option_d', 'option_
 const REQUIRED_COLUMNS = ['question', 'option_a', 'option_b', 'correct_option'];
 
 /**
- * Parse a CSV string into Mockify question format
+ * Parse a CSV string into Testara question format
  */
 export function parseCSVString(csvString) {
     const result = Papa.parse(csvString.trim(), {
@@ -22,7 +22,7 @@ export function parseCSVString(csvString) {
 }
 
 /**
- * Parse an XLSX/XLS file (ArrayBuffer) into Mockify question format
+ * Parse an XLSX/XLS file (ArrayBuffer) into Testara question format
  */
 export function parseExcelBuffer(buffer) {
     try {
@@ -47,7 +47,7 @@ export function parseExcelBuffer(buffer) {
 }
 
 /**
- * Normalize parsed rows into Mockify question objects
+ * Normalize parsed rows into Testara question objects
  */
 function normalizeRows(rows) {
     const questions = [];

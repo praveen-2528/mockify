@@ -142,7 +142,7 @@ const Setup = () => {
             </div>
 
             <div className="setup-header">
-                <h1>Mockify</h1>
+                <h1>Testara</h1>
                 <p>Configure your practice session</p>
             </div>
 

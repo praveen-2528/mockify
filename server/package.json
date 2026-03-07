@@ -1,8 +1,8 @@
 {
-    "name": "mockify-server",
+    "name": "testara-server",
     "version": "1.0.0",
     "type": "module",
-    "description": "Mockify multiplayer room server",
+    "description": "Testara multiplayer room server",
     "main": "index.js",
     "scripts": {
         "start": "node index.js",
