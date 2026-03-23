@@ -5,8 +5,9 @@ import { useRoom } from '../context/RoomContext';
 import { saveExam } from '../utils/storage';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Clock, ChevronLeft, ChevronRight, CheckCircle, XCircle, List, Play, Pause, SaveAll, Bookmark, Save, Users } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, CheckCircle, XCircle, List, Play, Pause, SaveAll, Bookmark, Save, Users, Pencil } from 'lucide-react';
 import FriendlyChat from '../components/FriendlyChat';
+import WritingPad from '../components/WritingPad';
 import './Test.css';
 
 const Test = () => {
@@ -20,6 +21,7 @@ const Test = () => {
     const [showPalette, setShowPalette] = useState(false);
     const [isPaused, setIsPaused] = useState(false);
     const [saveToast, setSaveToast] = useState(false);
+    const [showPad, setShowPad] = useState(false);
     const autoSaveRef = useRef(null);
 
     // Friendly mode states
@@ -315,6 +317,14 @@ const Test = () => {
                     )}
 
                     <button
+                        className={`pad-toggle-btn ${showPad ? 'active' : ''}`}
+                        onClick={() => setShowPad(!showPad)}
+                        title={showPad ? 'Hide Scratchpad' : 'Open Scratchpad'}
+                    >
+                        <Pencil size={16} /> {showPad ? 'Hide Pad' : 'Scratch Pad'}
+                    </button>
+
+                    <button
                         className="mobile-palette-toggle btn btn-ghost btn-sm"
                         onClick={() => setShowPalette(!showPalette)}
                     >
@@ -480,6 +490,21 @@ const Test = () => {
                             </div>
                         </div>
                     </Card>
+
+                    {/* Writing Pad */}
+                    {showPad && (
+                        <div className="writing-pad-panel">
+                            <WritingPad
+                                questionIndex={currentQuestionIndex}
+                                isShared={isFriendly && friendlyRevealed}
+                                socket={room.socket}
+                                roomCode={roomCode}
+                                playerColor={isFriendly ? '#a5b4fc' : undefined}
+                                playerName={room.playerName || 'local'}
+                                onClose={() => setShowPad(false)}
+                            />
+                        </div>
+                    )}
                 </main>
 
                 {/* Sidebar / Question Palette */}

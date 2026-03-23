@@ -1076,6 +1076,22 @@ io.on('connection', (socket) => {
 
         console.log(`[Socket] Disconnected: ${socket.id}`);
     });
+
+    // ── Writing Pad: Real-time stroke relay ─────────────────────────
+    socket.on('padDraw', ({ code, questionIndex, stroke }) => {
+        if (!code) return;
+        socket.to(code).emit('padDraw', { questionIndex, stroke });
+    });
+
+    socket.on('padClear', ({ code, questionIndex, playerId }) => {
+        if (!code) return;
+        socket.to(code).emit('padClear', { questionIndex, playerId });
+    });
+
+    socket.on('padUndo', ({ code, questionIndex, playerId }) => {
+        if (!code) return;
+        socket.to(code).emit('padUndo', { questionIndex, playerId });
+    });
 });
 
 // ─── Helpers ─────────────────────────────────────────────────────────
