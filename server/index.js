@@ -1074,6 +1074,15 @@ io.on('connection', (socket) => {
             console.log(`[Room] ${code} closed (host left)`);
         }
 
+        // Clean up voice peers on disconnect
+        if (room.voicePeers) {
+            const voicePeer = room.voicePeers.find(p => p.id === socket.id);
+            if (voicePeer) {
+                room.voicePeers = room.voicePeers.filter(p => p.id !== socket.id);
+                socket.to(code).emit('voiceLeave', { peerId: socket.id, peerName: voicePeer.name });
+            }
+        }
+
         console.log(`[Socket] Disconnected: ${socket.id}`);
     });
 
@@ -1091,6 +1100,52 @@ io.on('connection', (socket) => {
     socket.on('padUndo', ({ code, questionIndex, playerId }) => {
         if (!code) return;
         socket.to(code).emit('padUndo', { questionIndex, playerId });
+    });
+
+    // ── Voice Chat: WebRTC Signaling ────────────────────────────────
+    socket.on('voiceJoin', ({ code, peerName }) => {
+        if (!code) return;
+        const room = rooms.get(code);
+        if (!room) return;
+
+        // Track voice participants
+        if (!room.voicePeers) room.voicePeers = [];
+        room.voicePeers = room.voicePeers.filter(p => p.id !== socket.id);
+        room.voicePeers.push({ id: socket.id, name: peerName });
+
+        // Tell existing voice peers about new joiner
+        socket.to(code).emit('voiceJoin', { peerId: socket.id, peerName });
+
+        // Send current voice peer list to the joiner
+        socket.emit('voicePeers', {
+            peers: room.voicePeers.filter(p => p.id !== socket.id),
+        });
+    });
+
+    socket.on('voiceOffer', ({ code, targetId, offer }) => {
+        if (!code || !targetId) return;
+        const room = rooms.get(code);
+        const peerName = room?.voicePeers?.find(p => p.id === socket.id)?.name || 'Unknown';
+        io.to(targetId).emit('voiceOffer', { fromId: socket.id, fromName: peerName, offer });
+    });
+
+    socket.on('voiceAnswer', ({ code, targetId, answer }) => {
+        if (!code || !targetId) return;
+        io.to(targetId).emit('voiceAnswer', { fromId: socket.id, answer });
+    });
+
+    socket.on('voiceIceCandidate', ({ code, targetId, candidate }) => {
+        if (!code || !targetId) return;
+        io.to(targetId).emit('voiceIceCandidate', { fromId: socket.id, candidate });
+    });
+
+    socket.on('voiceLeave', ({ code, peerName }) => {
+        if (!code) return;
+        const room = rooms.get(code);
+        if (room && room.voicePeers) {
+            room.voicePeers = room.voicePeers.filter(p => p.id !== socket.id);
+        }
+        socket.to(code).emit('voiceLeave', { peerId: socket.id, peerName });
     });
 });
 

@@ -8,6 +8,7 @@ import Button from '../components/ui/Button';
 import { Clock, ChevronLeft, ChevronRight, CheckCircle, XCircle, List, Play, Pause, SaveAll, Bookmark, Save, Users, Pencil } from 'lucide-react';
 import FriendlyChat from '../components/FriendlyChat';
 import WritingPad from '../components/WritingPad';
+import VoiceChat from '../components/VoiceChat';
 import './Test.css';
 
 const Test = () => {
@@ -314,6 +315,15 @@ const Test = () => {
                             <Users size={16} />
                             <span>Q{currentQuestionIndex + 1}/{questions.length}</span>
                         </div>
+                    )}
+
+                    {isFriendly && room.socket && (
+                        <VoiceChat
+                            socket={room.socket}
+                            roomCode={roomCode}
+                            playerName={room.playerName}
+                            participants={room.participants}
+                        />
                     )}
 
                     <button
