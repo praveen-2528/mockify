@@ -77,7 +77,7 @@ export const EXAM_TEMPLATES = {
         subjects: [
             {
                 id: 'quant', name: 'Mathematical Abilities', count: 30,
-                topics: ['Number System', 'Algebra', 'Geometry', 'Trigonometry', 'Mensuration', 'Statistics', 'Data Interpretation', 'Percentage', 'Ratio & Proportion', 'Square Roots', 'Average', 'Interest', 'Profit & Loss', 'Discount', 'Partnership', 'Mixture & Alligation', 'Time & Distance', 'Time & Work', 'Surds & Indices']
+                topics: ['Number System', 'Algebra', 'Geometry', 'Trigonometry', 'Mensuration', 'Statistics', 'Data Interpretation', 'Percentage', 'Ratio & Proportion', 'Square Roots', 'Average', 'Interest', 'Profit & Loss', 'Discount', 'Partnership', 'Mixture & Alligation', 'Time & Distance', 'Time & Work', 'Surds & Indices', 'Probability', 'Coordinate Geometry']
             },
             {
                 id: 'reasoning', name: 'Reasoning & General Intelligence', count: 30,
@@ -135,7 +135,7 @@ export const EXAM_TEMPLATES = {
         subjects: [
             {
                 id: 'quant', name: 'Mathematical Abilities', count: 30,
-                topics: ['Number System', 'Algebra', 'Geometry', 'Trigonometry', 'Mensuration', 'Statistics', 'Data Interpretation', 'Percentage', 'Ratio & Proportion', 'Average', 'Interest', 'Profit & Loss', 'Time & Distance', 'Time & Work']
+                topics: ['Number System', 'Algebra', 'Geometry', 'Trigonometry', 'Mensuration', 'Statistics', 'Data Interpretation', 'Percentage', 'Ratio & Proportion', 'Average', 'Interest', 'Profit & Loss', 'Time & Distance', 'Time & Work', 'Probability', 'Coordinate Geometry']
             },
             {
                 id: 'reasoning', name: 'Reasoning & General Intelligence', count: 30,
