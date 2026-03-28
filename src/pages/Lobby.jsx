@@ -68,6 +68,11 @@ const Lobby = () => {
     const [copied, setCopied] = useState(false);
     const [copiedInvite, setCopiedInvite] = useState(false);
     const [copiedShareMsg, setCopiedShareMsg] = useState(false);
+    
+    // NEW state for generated test name
+    const [generatedTestName, setGeneratedTestName] = useState('Multiplayer Room Test');
+
+    // ── Setup Wizard State (Host only) ──
     const [copiedLanLink, setCopiedLanLink] = useState(false);
     const [loading, setLoading] = useState(false);
     const [lanAddresses, setLanAddresses] = useState([]);
@@ -168,7 +173,8 @@ RULES:
 - correct_option must be a single letter (${optionLetters.join(', ')})
 - question_type should be: MCQ
 - exam_type should be: ${selectedExam}
-- Wrap any field containing commas in double quotes
+- test_name should be a short descriptive title for this test
+- CRITICAL: You MUST wrap EVERY single field in double quotes, even if it has no commas. (e.g. "What is 2+2?", "4", "A", etc.)
 - Generate real exam-level questions suitable for ${currentTemplate.name}
 - Each question should have a clear, concise explanation
 - Use proper subject/topic/subtopic tags matching the exam syllabus
@@ -188,7 +194,8 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             setParsedQuestions(data.questions);
-            setCreateStep(4);
+            setGeneratedTestName(data.mock.name || 'Saved Mock Test');
+            setCreateStep(5);
         } catch (err) {
             setError(err.message);
         }
@@ -211,10 +218,11 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
         });
         setParsedQuestions(result.questions);
         setParseErrors(result.errors);
+        if (result.testName) setGeneratedTestName(result.testName);
 
         if (result.questions.length > 0) {
             saveToBank(result.questions);
-            setCreateStep(4);
+            setCreateStep(5);
         } else {
             setError('No valid questions found. Check the CSV format.');
         }
@@ -233,7 +241,8 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
             if (!res.ok) throw new Error(data.error);
             if (!data.questions || data.questions.length === 0) throw new Error('No questions found in your bank for this selection.');
             setParsedQuestions(data.questions);
-            setCreateStep(4);
+            setGeneratedTestName(`${bankSubject || 'General'} Bank Practice`);
+            setCreateStep(5);
         } catch (err) { setError(err.message); }
         setBankLoading(false);
     };
@@ -261,6 +270,7 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                 testFormat,
                 questions: parsedQuestions,
                 roomMode,
+                testName: generatedTestName,
             });
         } catch (err) {
             setError(err.message);
@@ -284,7 +294,8 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                 setLoading(true);
                 await new Promise(r => setTimeout(r, 600));
                 try {
-                    await room.joinRoom({ code: codeFromLink, playerName: playerName.trim() });
+                    const res = await room.joinRoom({ code: codeFromLink, playerName: playerName.trim() });
+                    if (res?.room?.started) navigate('/test');
                 } catch (err) {
                     setError(err.message);
                     room.resetToLocal();
@@ -299,7 +310,8 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
         if (!joinCode.trim() || joinCode.trim().length < 4) return setError('Enter a valid room code or invite link.');
         setLoading(true);
         try {
-            await room.joinRoom({ code: joinCode.trim(), playerName: playerName.trim() });
+            const res = await room.joinRoom({ code: joinCode.trim(), playerName: playerName.trim() });
+            if (res?.room?.started) navigate('/test');
         } catch (err) {
             setError(err.message);
         }
@@ -556,9 +568,11 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                             <div className="wizard-step-line" />
                             <div className={`wizard-step ${createStep >= 2 ? 'active' : ''}`} onClick={() => createStep > 2 && setCreateStep(2)}>2. Format</div>
                             <div className="wizard-step-line" />
-                            <div className={`wizard-step ${createStep >= 3 ? 'active' : ''}`} onClick={() => createStep > 3 && setCreateStep(3)}>3. Questions</div>
+                            <div className={`wizard-step ${createStep >= 3 ? 'active' : ''}`} onClick={() => createStep > 3 && setCreateStep(3)}>3. Prompt</div>
                             <div className="wizard-step-line" />
-                            <div className={`wizard-step ${createStep >= 4 ? 'active' : ''}`}>4. Create</div>
+                            <div className={`wizard-step ${createStep >= 4 ? 'active' : ''}`} onClick={() => createStep > 4 && setCreateStep(4)}>4. Output</div>
+                            <div className="wizard-step-line" />
+                            <div className={`wizard-step ${createStep >= 5 ? 'active' : ''}`}>5. Create</div>
                         </div>
 
                         {/* ── Step 1: Select Exam ── */}
@@ -715,26 +729,11 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                                             </>
                                         )}
 
-                                        <div style={{ marginTop: '1rem' }}>
-                                            <label className="picker-label">Paste AI's CSV Output</label>
-                                            <textarea
-                                                className="json-textarea"
-                                                rows={6}
-                                                value={aiOutput}
-                                                onChange={e => setAiOutput(e.target.value)}
-                                                placeholder="Paste CSV output here..."
-                                            />
+                                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+                                            <Button variant="primary" onClick={() => setCreateStep(4)}>
+                                                Next: Paste AI Output <ChevronRight size={16} />
+                                            </Button>
                                         </div>
-
-                                        {parseErrors.length > 0 && (
-                                            <div className="error-message">
-                                                <span>⚠️ {parseErrors.length} issue(s): {parseErrors.slice(0, 2).join('; ')}</span>
-                                            </div>
-                                        )}
-
-                                        <Button variant="primary" className="full-width" onClick={handleParseOutput} disabled={!aiOutput.trim()}>
-                                            <FileSpreadsheet size={16} /> Parse & Import
-                                        </Button>
                                     </div>
                                 )}
 
@@ -806,8 +805,53 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                             </div>
                         )}
 
-                        {/* ── Step 4: Room Config & Create ── */}
+                        {/* ── Step 4: Paste Output ── */}
                         {createStep === 4 && (
+                            <div className="wizard-content animate-fade-in">
+                                <h3 className="wizard-title">📋 Paste AI Output</h3>
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+                                    Paste the generated CSV output from the AI here. It will automatically parse it and prepare your room.
+                                </p>
+
+                                <div className="csv-paste-section glass" style={{ padding: '1rem', borderRadius: '8px' }}>
+                                    <textarea
+                                        className="json-textarea"
+                                        rows={10}
+                                        value={aiOutput}
+                                        onChange={e => setAiOutput(e.target.value)}
+                                        placeholder="question,option_a,option_b,option_c,option_d,correct_option,explanation&#10;What is 2+2?,3,4,5,6,B,Because 2+2=4"
+                                        style={{
+                                            width: '100%', minWidth: '100%', padding: '1rem', borderRadius: '8px',
+                                            background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
+                                            color: 'white', fontFamily: 'monospace', fontSize: '13px', outline: 'none', resize: 'vertical'
+                                        }}
+                                    />
+
+                                    {parseErrors.length > 0 && (
+                                        <div className="error-message" style={{ marginTop: '1rem' }}>
+                                            <AlertCircle size={16} />
+                                            <span>⚠️ {parseErrors.length} issue(s): {parseErrors.slice(0, 2).join('; ')}</span>
+                                        </div>
+                                    )}
+
+                                    <div className="step-actions" style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
+                                        <Button variant="ghost" onClick={() => setCreateStep(3)}>
+                                            <ChevronLeft size={16} /> Back
+                                        </Button>
+                                        <Button variant="primary" className="full-width" onClick={() => {
+                                            handleParseOutput();
+                                            // HandleParseOutput internally sets step 5 if successful, but we can't assume that inside the view.
+                                            // Actally, handleParseOutput already calls setCreateStep(4) in original code. I must change that to setCreateStep(5) inside handleParseOutput?
+                                        }} disabled={!aiOutput.trim()}>
+                                            <FileSpreadsheet size={16} /> Parse & Configure Room
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── Step 5: Room Config & Create ── */}
+                        {createStep === 5 && (
                             <div className="wizard-content animate-fade-in">
                                 <h3 className="wizard-title">🚀 Create Your Room</h3>
 
@@ -839,7 +883,7 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                                 </Button>
 
                                 <div className="step-nav">
-                                    <Button variant="ghost" onClick={() => setCreateStep(4)}>
+                                    <Button variant="ghost" onClick={() => setCreateStep(questionSource === 'ai' ? 4 : 3)}>
                                         <ChevronLeft size={16} /> Back
                                     </Button>
                                 </div>

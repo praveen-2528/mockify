@@ -6,6 +6,7 @@ import { nanoid } from 'nanoid';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { Tunnel } from 'cloudflared';
+import Database from 'better-sqlite3';
 import os from 'os';
 import db from './db.js';
 
@@ -121,7 +122,7 @@ app.post('/api/tunnel/start', async (_req, res) => {
     if (tunnelProcess && tunnelUrl) {
         return res.json({ success: true, url: tunnelUrl, shortUrl });
     }
-    // Clean up stale process if URL was lost
+    // Clean up stale process
     if (tunnelProcess && !tunnelUrl) {
         try { tunnelProcess.stop(); } catch { }
         tunnelProcess = null;
@@ -129,7 +130,7 @@ app.post('/api/tunnel/start', async (_req, res) => {
     try {
         console.log('[Tunnel] Starting Cloudflare tunnel...');
 
-        // Point tunnel to Vite dev server (5173) which serves frontend + proxies API/socket to Express
+        // Point tunnel to Vite dev server (5173)
         const VITE_PORT = 5173;
         const t = Tunnel.quick(`http://localhost:${VITE_PORT}`);
 
@@ -161,11 +162,11 @@ app.post('/api/tunnel/start', async (_req, res) => {
 
         console.log(`[Tunnel] Online at ${tunnelUrl}`);
 
-        // Shorten the invite URL
-        shortUrl = await shortenUrl(tunnelUrl);
-        console.log(`[Tunnel] Short URL: ${shortUrl}`);
+        try {
+            shortUrl = await shortenUrl(tunnelUrl);
+            console.log(`[Tunnel] Short URL: ${shortUrl}`);
+        } catch { /* ignore */ }
 
-        // Monitor for tunnel close
         t.on('exit', () => {
             tunnelProcess = null;
             tunnelUrl = null;
@@ -176,7 +177,6 @@ app.post('/api/tunnel/start', async (_req, res) => {
         res.json({ success: true, url: tunnelUrl, shortUrl });
     } catch (err) {
         console.error('[Tunnel] Failed to start:', err.message);
-        // Clean up on failure
         if (tunnelProcess && !tunnelUrl) {
             try { tunnelProcess.stop(); } catch { }
             tunnelProcess = null;
@@ -264,11 +264,19 @@ app.get('/api/auth/me', verifyToken, (req, res) => {
 
 // ── History: Save Test Result ────────────────────────────────────────
 app.post('/api/history', verifyToken, (req, res) => {
-    const { examType, testFormat, score, total, correct, incorrect, unattempted, totalMarks, maxMarks, percentage, totalTime, markingScheme, topicBreakdown, isMultiplayer } = req.body;
+    const { 
+        examType, testFormat, score, total, correct, incorrect, unattempted, 
+        totalMarks, maxMarks, percentage, totalTime, markingScheme, 
+        topicBreakdown, isMultiplayer, testName, questions, answers, timeSpent 
+    } = req.body;
 
     const stmt = db.prepare(`
-        INSERT INTO test_history (user_id, exam_type, test_format, score, total, correct, incorrect, unattempted, total_marks, max_marks, percentage, total_time, marking_scheme, topic_breakdown, is_multiplayer)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO test_history (
+            user_id, exam_type, test_format, score, total, correct, incorrect, unattempted, 
+            total_marks, max_marks, percentage, total_time, marking_scheme, topic_breakdown, 
+            is_multiplayer, test_name, questions, answers, time_spent
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -277,18 +285,31 @@ app.post('/api/history', verifyToken, (req, res) => {
         totalMarks || 0, maxMarks || 0, percentage || 0, totalTime || 0,
         markingScheme ? JSON.stringify(markingScheme) : null,
         topicBreakdown ? JSON.stringify(topicBreakdown) : null,
-        isMultiplayer ? 1 : 0
+        isMultiplayer ? 1 : 0,
+        testName || 'Untitled Test',
+        questions ? JSON.stringify(questions) : null,
+        answers ? JSON.stringify(answers) : null,
+        timeSpent ? JSON.stringify(timeSpent) : null
     );
 
     res.status(201).json({ id: result.lastInsertRowid });
 });
 
-// ── History: Get User's History ──────────────────────────────────────
+// ── History: Get User's History (List) ───────────────────────────────
 app.get('/api/history', verifyToken, (req, res) => {
-    const rows = db.prepare('SELECT * FROM test_history WHERE user_id = ? ORDER BY created_at DESC LIMIT 50').all(req.userId);
+    // Only fetch metadata (exclude giant JSON text blobs) for the list
+    const rows = db.prepare(`
+        SELECT id, exam_type, test_format, score, total, correct, incorrect, unattempted, 
+               total_marks, max_marks, percentage, total_time, marking_scheme, topic_breakdown, 
+               is_multiplayer, created_at, test_name
+        FROM test_history 
+        WHERE user_id = ? 
+        ORDER BY created_at DESC LIMIT 50
+    `).all(req.userId);
 
     const history = rows.map(r => ({
         id: r.id,
+        testName: r.test_name,
         examType: r.exam_type,
         testFormat: r.test_format,
         score: r.score,
@@ -307,6 +328,34 @@ app.get('/api/history', verifyToken, (req, res) => {
     }));
 
     res.json({ history });
+});
+
+// ── History: Get Specific History Item ───────────────────────────────
+app.get('/api/history/:id', verifyToken, (req, res) => {
+    const record = db.prepare('SELECT * FROM test_history WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+    if (!record) return res.status(404).json({ error: 'History record not found' });
+
+    res.json({
+        id: record.id,
+        testName: record.test_name,
+        examType: record.exam_type,
+        testFormat: record.test_format,
+        score: record.score,
+        total: record.total,
+        correct: record.correct,
+        incorrect: record.incorrect,
+        unattempted: record.unattempted,
+        totalMarks: record.total_marks,
+        maxMarks: record.max_marks,
+        percentage: record.percentage,
+        totalTime: record.total_time,
+        markingScheme: record.marking_scheme ? JSON.parse(record.marking_scheme) : null,
+        isMultiplayer: !!record.is_multiplayer,
+        date: record.created_at,
+        questions: record.questions ? JSON.parse(record.questions) : null,
+        answers: record.answers ? JSON.parse(record.answers) : null,
+        timeSpent: record.time_spent ? JSON.parse(record.time_spent) : null,
+    });
 });
 
 // ── History: Clear ───────────────────────────────────────────────────
@@ -480,7 +529,7 @@ app.get('/api/questions', verifyToken, (req, res) => {
     }));
 
     const subjects = db.prepare('SELECT DISTINCT subject FROM questions WHERE user_id = ? ORDER BY subject').all(req.userId).map(r => r.subject);
-    const topics = db.prepare('SELECT DISTINCT topic FROM questions WHERE user_id = ? AND topic != "" ORDER BY topic').all(req.userId).map(r => r.topic);
+    const topics = db.prepare('SELECT DISTINCT topic FROM questions WHERE user_id = ? AND topic != \'\' ORDER BY topic').all(req.userId).map(r => r.topic);
 
     res.json({ questions, total, subjects, topics, page: parseInt(page), pages: Math.ceil(total / limit) });
 });
@@ -806,7 +855,7 @@ io.on('connection', (socket) => {
     console.log(`[Socket] Connected: ${socket.id}`);
 
     // ── Create Room ──────────────────────────────────────────────────
-    socket.on('createRoom', ({ hostName, examType, testFormat, questions, roomMode }, callback) => {
+    socket.on('createRoom', ({ hostName, examType, testFormat, questions, roomMode, testName }, callback) => {
         const code = generateRoomCode();
 
         const room = {
@@ -815,6 +864,7 @@ io.on('connection', (socket) => {
             hostName,
             examType,
             testFormat,
+            testName,
             questions,
             roomMode,  // 'friendly' or 'exam'
             participants: [{ id: socket.id, name: hostName, isHost: true }],
@@ -841,7 +891,7 @@ io.on('connection', (socket) => {
         if (!room) {
             return callback({ success: false, error: 'Room not found. Check the code and try again.' });
         }
-        if (room.started) {
+        if (room.started && room.roomMode !== 'friendly') {
             return callback({ success: false, error: 'This test has already started.' });
         }
         if (room.participants.length >= 20) {
@@ -892,6 +942,7 @@ io.on('connection', (socket) => {
             examType: room.examType,
             testFormat: room.testFormat,
             roomMode: room.roomMode,
+            testName: room.testName,
         });
 
         console.log(`[Room] ${code} test started! (${room.roomMode} mode)`);
@@ -1164,6 +1215,7 @@ function sanitizeRoom(room) {
         roomMode: room.roomMode,
         participants: room.participants.map(p => ({ name: p.name, isHost: p.isHost })),
         started: room.started,
+        currentQuestionIndex: room.currentQuestionIndex || 0,
     };
 }
 
@@ -1171,4 +1223,26 @@ function sanitizeRoom(room) {
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, '0.0.0.0', () => {
     console.log(`\n  🚀 Testara server running on http://localhost:${PORT}\n`);
+
+    // Auto-start tunnel for easy mobile/mic testing (delay to let Vite start)
+    setTimeout(() => {
+        console.log(`  🌐 Automatically starting Cloudflare Tunnel for Voice Chat...`);
+        const VITE_PORT = 5173;
+        try {
+            const t = Tunnel.quick(`http://localhost:${VITE_PORT}`);
+            t.once('url', async (url) => {
+                tunnelUrl = url;
+                tunnelProcess = t;
+                try {
+                    shortUrl = await shortenUrl(url);
+                } catch { /* ignore */ }
+                console.log(`\n  ✅ TUNNEL READY! Open this URL on your phone/host for Mic Support:`);
+                console.log(`  👉 ${url}`);
+                if (shortUrl) console.log(`  👉 Short: ${shortUrl}\n`);
+            });
+            t.on('exit', () => { tunnelUrl = null; tunnelProcess = null; shortUrl = null; });
+        } catch(err) {
+            console.log(`  ❌ Failed to auto-start tunnel:`, err.message);
+        }
+    }, 3000);
 });

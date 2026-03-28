@@ -14,6 +14,8 @@ const VoiceChat = ({ socket, roomCode, playerName, participants = [] }) => {
     const [voicePeers, setVoicePeers] = useState([]); // names of people in voice
     const [speakingPeers, setSpeakingPeers] = useState(new Set());
     const [error, setError] = useState('');
+    const [httpsRequired, setHttpsRequired] = useState(false);
+    const [tunnelUrl, setTunnelUrl] = useState('');
 
     const localStreamRef = useRef(null);
     const peerConnectionsRef = useRef(new Map()); // socketId -> RTCPeerConnection
@@ -73,11 +75,14 @@ const VoiceChat = ({ socket, roomCode, playerName, participants = [] }) => {
         pc.ontrack = (e) => {
             let audio = audioElementsRef.current.get(remotePeerId);
             if (!audio) {
-                audio = new Audio();
+                audio = document.createElement('audio');
                 audio.autoplay = true;
+                audio.style.display = 'none';
+                document.body.appendChild(audio); // Append to DOM for mobile autoplay
                 audioElementsRef.current.set(remotePeerId, audio);
             }
             audio.srcObject = e.streams[0];
+            audio.play().catch(err => console.warn('Autoplay prevented:', err));
 
             // Voice activity detection for this peer
             try {
@@ -303,12 +308,41 @@ const VoiceChat = ({ socket, roomCode, playerName, participants = [] }) => {
         };
     }, [socket, inVoice, roomCode, createPeerConnection]);
 
+    // Check for HTTPS / Tunnel requirement
+    useEffect(() => {
+        const isSecure = window.isSecureContext || window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (!isSecure) {
+            setHttpsRequired(true);
+            fetch('/api/tunnel/status')
+                .then(r => r.json())
+                .then(data => { if (data.active && data.url) setTunnelUrl(data.url); })
+                .catch(() => {});
+        }
+    }, []);
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
             cleanupConnections();
         };
     }, [cleanupConnections]);
+
+    if (httpsRequired) {
+        return (
+            <div className="vc-join-bar">
+                <span className="vc-error" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <MicOff size={14} /> HTTPS Required for Mic
+                </span>
+                {tunnelUrl ? (
+                    <a href={`${tunnelUrl}${window.location.pathname}`} className="vc-join-btn" style={{ textDecoration: 'none' }}>
+                        Switch to Tunnel
+                    </a>
+                ) : (
+                    <span className="vc-error" style={{ fontSize: '0.65rem' }}>(Tunnel inactive)</span>
+                )}
+            </div>
+        );
+    }
 
     if (!inVoice) {
         return (

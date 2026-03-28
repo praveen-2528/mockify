@@ -61,6 +61,11 @@
 - **Dynamic Podium** features the Top 3 players with scaling bars.
 - Ranks based on **Average Score** across all tests taken.
 
+### 📖 SSC Quant Formula Book
+- **Math Compendium** — Comprehensive formulas for Number System, Algebra, Geometry, Trigonometry, and more.
+- **Tips & Tricks** — Dedicated section for speed math shortcuts and problem-solving techniques.
+- **Instant Search** — Search bar to quickly locate specific formulas or equations.
+
 ### 🎨 Premium Glassmorphism UI
 - **Deep Space Background** — Animated mesh gradient with floating red/grey geometric blobs and an SVG noise-grain overlay for tangible depth
 - **Frosted Glass Panels** — All cards and navigation use `backdrop-filter: blur(16px)` translucent styling

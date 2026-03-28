@@ -140,6 +140,7 @@
     font-weight: 800;
     margin-bottom: 0.5rem;
     background: linear-gradient(to right, #fff, #c7d2fe);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -233,6 +234,7 @@
 .section-header h2 {
     font-size: 1.2rem;
     font-weight: 600;
+    color: #ffffff;
 }
 
 .view-all-text {
@@ -317,11 +319,12 @@
     font-size: 1.1rem;
     font-weight: 600;
     margin-bottom: 0.25rem;
+    color: #ffffff;
 }
 
 .ac-bottom p {
     font-size: 0.85rem;
-    color: var(--text-secondary);
+    color: #cbd5e1;
 }
 
 /* Recent Activity inside Main */

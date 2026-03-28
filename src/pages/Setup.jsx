@@ -10,7 +10,7 @@ import {
     BookOpen, AlertCircle, Users, Folder, BarChart3, LogOut, Settings as SettingsIcon, 
     Trophy, Library, LayoutTemplate, Sparkles, Loader, UserPlus, FileSpreadsheet, 
     TrendingUp, Clock, PlayCircle, ChevronLeft, Crown, Medal, ArrowUpRight, Activity, 
-    UserCheck, Globe, Star, Copy, ClipboardCheck, Layers, Target
+    UserCheck, Globe, Star, Copy, ClipboardCheck, Layers, Target, History
 } from 'lucide-react';
 import './Setup.css';
 
@@ -112,7 +112,7 @@ const Setup = () => {
     };
 
     const currentTemplate = EXAM_TEMPLATES[examType];
-    const currentSubjectObj = currentTemplate?.subjects?.find(s => s.id === selectedSubject) || currentTemplate?.subjects?.[0];
+    const currentSubject = currentTemplate?.subjects?.find(s => s.id === selectedSubject);
 
     const generatePrompt = () => {
         if (!currentTemplate) return;
@@ -129,12 +129,12 @@ const Setup = () => {
             subjectInfo = currentTemplate.subjects.map(s => `- ${s.name}: ${s.count} questions`).join('\n');
             questionCount = currentTemplate.totalQuestions;
         } else if (testFormat === 'subject') {
-            if (!currentSubjectObj) return setError('Please select a subject.');
-            subjectInfo = currentSubjectObj.name;
-            questionCount = currentSubjectObj.count || topicQuestionCount;
+            if (!currentSubject) return setError('Please select a subject.');
+            subjectInfo = currentSubject.name;
+            questionCount = currentSubject.count || topicQuestionCount;
         } else if (testFormat === 'topic') {
-            if (!currentSubjectObj || !selectedTopic) return setError('Please select a subject and topic.');
-            subjectInfo = currentSubjectObj.name;
+            if (!currentSubject || !selectedTopic) return setError('Please select a subject and topic.');
+            subjectInfo = currentSubject.name;
             topicInfo = `Topic: ${selectedTopic}`;
             questionCount = topicQuestionCount;
         }
@@ -156,7 +156,8 @@ RULES:
 - correct_option must be a single letter (${optionLetters.join(', ')})
 - question_type should be: MCQ
 - exam_type should be: ${examType}
-- Wrap any field containing commas in double quotes
+- test_name should be a short descriptive title for this test
+- CRITICAL: You MUST wrap EVERY single field in double quotes, even if it has no commas. (e.g. "What is 2+2?", "4", "A", etc.)
 - Generate exam-level questions suitable for ${currentTemplate.name}
 - Each question should have a clear, concise explanation
 - Use proper subject/topic/subtopic TAGS matching the syllabus
@@ -184,7 +185,8 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                 questions: data.questions,
                 testStarted: true,
                 markingScheme: template ? template.markingScheme : getActiveScheme(),
-                examType: template ? template.id : examType
+                examType: template ? template.id : examType,
+                testName: data.mock.name || 'Saved Mock Test'
             });
             navigate('/test');
         } catch (err) {
@@ -203,7 +205,12 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
             if (!data.questions || data.questions.length === 0) throw new Error('No questions found.');
-            updateExamState({ questions: data.questions, testStarted: true, markingScheme: getActiveScheme() });
+            updateExamState({ 
+                questions: data.questions, 
+                testStarted: true, 
+                markingScheme: getActiveScheme(),
+                testName: `${bankSubject || 'General'} Bank Practice`
+            });
             navigate('/test');
         } catch (err) { setError(err.message); }
         setBankLoading(false);
@@ -219,7 +226,7 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
 
         const result = parseCSVString(cleaned, {
             examType,
-            subject: currentSubjectObj?.name || '',
+            subject: currentSubject?.name || '',
             topic: selectedTopic || ''
         });
         if (result.questions.length > 0) {
@@ -227,7 +234,12 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                 const j = Math.floor(Math.random() * (i + 1));
                 [result.questions[i], result.questions[j]] = [result.questions[j], result.questions[i]];
             }
-            updateExamState({ questions: result.questions, testStarted: true, markingScheme: getActiveScheme() });
+            updateExamState({ 
+                questions: result.questions, 
+                testStarted: true, 
+                markingScheme: getActiveScheme(),
+                testName: result.testName || 'Generated Test'
+            });
             navigate('/test');
         } else {
             setError(result.errors.length > 0 ? result.errors.slice(0, 2).join('; ') : 'No valid questions found.');
@@ -310,6 +322,16 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                             <h2>Quick Tools</h2>
                         </div>
                         <div className="action-hub-grid">
+                            <button className="action-card glass" onClick={() => navigate('/formulas')}>
+                                <div className="ac-top">
+                                    <div className="ac-icon primary"><BookOpen size={24} /></div>
+                                    <ArrowUpRight size={18} className="ac-arrow" />
+                                </div>
+                                <div className="ac-bottom">
+                                    <h3>Formula Book</h3>
+                                    <p>SSC Quant formulas & tricks</p>
+                                </div>
+                            </button>
                             <button className="action-card glass" onClick={() => navigate('/lobby')}>
                                 <div className="ac-top">
                                     <div className="ac-icon primary"><Users size={24} /></div>
@@ -338,6 +360,16 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                                 <div className="ac-bottom">
                                     <h3>Mock Builder</h3>
                                     <p>Combine banks into custom sets</p>
+                                </div>
+                            </button>
+                            <button className="action-card glass" onClick={() => navigate('/dashboard')}>
+                                <div className="ac-top">
+                                    <div className="ac-icon" style={{ color: 'var(--primary-color)' }}><History size={24} /></div>
+                                    <ArrowUpRight size={18} className="ac-arrow" />
+                                </div>
+                                <div className="ac-bottom">
+                                    <h3>Attempted Tests</h3>
+                                    <p>Review your past exams and analytics</p>
                                 </div>
                             </button>
                             <button className="action-card glass" onClick={() => navigate('/question-bank')}>
@@ -499,7 +531,9 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                     <div className="step-line"></div>
                     <div className={`step ${step >= 2 ? 'active' : ''}`}>2. Format</div>
                     <div className="step-line"></div>
-                    <div className={`step ${step >= 3 ? 'active' : ''}`}>3. Data</div>
+                    <div className={`step ${step >= 3 ? 'active' : ''}`}>3. Content</div>
+                    <div className="step-line"></div>
+                    <div className={`step ${step >= 4 ? 'active' : ''}`}>4. Start</div>
                 </div>
 
                 {step === 1 && (
@@ -576,13 +610,13 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                             </div>
                         )}
 
-                        {testFormat === 'topic' && currentSubjectObj && currentSubjectObj.topics && (
+                        {testFormat === 'topic' && currentSubject && currentSubject.topics && (
                             <div className="topic-picker animate-fade-in" style={{ marginTop: '1.5rem' }}>
                                 <label className="picker-label" style={{ display: 'block', marginBottom: '0.6rem' }}>
                                     Select Topic
                                 </label>
                                 <div className="topic-chips">
-                                    {currentSubjectObj.topics.map(t => (
+                                    {currentSubject.topics.map(t => (
                                         <button
                                             key={t}
                                             className={`topic-chip ${selectedTopic === t ? 'selected' : ''}`}
@@ -664,10 +698,12 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                         {/* --- AI SOURCE --- */}
                         {questionSource === 'ai' && (
                             <div className="source-content animate-fade-in">
-                                <h4 className="marking-title" style={{ marginTop: 0 }}><Sparkles size={16} /> 1. Generate via AI Options</h4>
-                                <div className="glass" style={{ padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.03)' }}>
-                                    <Button variant="outline" onClick={generatePrompt} style={{ marginBottom: generatedPrompt ? '1rem' : '0' }}>
-                                        <Sparkles size={16} /> Create AI Prompt for {testFormat === 'topic' ? selectedTopic : currentSubjectObj?.name || currentTemplate?.name}
+                                <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                                    Generate an intelligent prompt to paste into ChatGPT, Claude, or Gemini. Once you get the output, proceed to the next step to paste it.
+                                </p>
+                                <div className="glass" style={{ padding: '1.2rem', borderRadius: '8px', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.03)' }}>
+                                    <Button variant="outline" onClick={generatePrompt} style={{ marginBottom: generatedPrompt ? '1rem' : '0', width: '100%', justifyContent: 'center' }}>
+                                        <Sparkles size={16} /> Generate AI Prompt for {testFormat === 'topic' ? selectedTopic : currentSubject?.name || currentTemplate?.name}
                                     </Button>
                                     {generatedPrompt && (
                                         <div className="prompt-display animate-fade-in" style={{ background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '8px', position: 'relative' }}>
@@ -684,18 +720,9 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                                         </div>
                                     )}
                                 </div>
-
-                                <h4 className="marking-title"><FileSpreadsheet size={16} /> 2. Paste CSV Output</h4>
-                                <div className="csv-paste-section">
-                                    <textarea
-                                        className="json-textarea"
-                                        rows={5}
-                                        value={csvInput}
-                                        onChange={e => setCsvInput(e.target.value)}
-                                        placeholder="question,option_a,option_b,option_c,option_d,correct_option,explanation&#10;What is 2+2?,3,4,5,6,B,2+2 equals 4"
-                                    />
-                                    <Button variant="primary" onClick={handleCSVParse} disabled={!csvInput.trim()} style={{ marginTop: '0.5rem' }}>
-                                        <FileSpreadsheet size={14} /> Parse CSV & Start Test
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                                    <Button variant="primary" onClick={() => setStep(4)}>
+                                        Next: Paste AI Output →
                                     </Button>
                                 </div>
                             </div>
@@ -781,8 +808,56 @@ START OUTPUT WITH THE CSV HEADER ROW DIRECTLY. NO OTHER TEXT.`;
                             </div>
                         )}
 
-                        <div className="step-actions">
+                        <div className="step-actions" style={{ marginTop: '3rem' }}>
                             <Button variant="ghost" onClick={() => setStep(2)}><ChevronLeft size={16} /> Back</Button>
+                        </div>
+                    </div>
+                )}
+
+                {step === 4 && (
+                    <div className="step-content animate-fade-in">
+                        <h2>Paste AI Output</h2>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
+                            Paste the CSV data generated by the AI below. The system will automatically parse and convert it into a test.
+                        </p>
+
+                        <div className="csv-paste-section glass" style={{ padding: '1rem', borderRadius: '8px' }}>
+                            <textarea
+                                className="json-textarea"
+                                rows={10}
+                                value={csvInput}
+                                onChange={e => setCsvInput(e.target.value)}
+                                placeholder="question,option_a,option_b,option_c,option_d,correct_option,explanation&#10;What is 2+2?,3,4,5,6,B,Because 2+2=4"
+                                style={{
+                                    width: '100%',
+                                    minWidth: '100%',
+                                    padding: '1rem',
+                                    borderRadius: '8px',
+                                    background: 'rgba(0,0,0,0.3)',
+                                    border: '1px solid rgba(255,255,255,0.1)',
+                                    color: 'white',
+                                    fontFamily: 'monospace',
+                                    fontSize: '13px',
+                                    outline: 'none',
+                                    resize: 'vertical'
+                                }}
+                            />
+                            
+                            {error && (
+                                <div className="error-message" style={{ marginTop: '1rem' }}>
+                                    <AlertCircle size={16} />
+                                    <span>{error}</span>
+                                </div>
+                            )}
+
+                            <div className="step-actions" style={{ marginTop: '1.5rem', justifyContent: 'flex-end', display: 'flex', gap: '1rem' }}>
+                                <Button variant="ghost" onClick={() => setStep(3)}>
+                                    <ChevronLeft size={16} /> Back
+                                </Button>
+                                <Button variant="primary" onClick={handleCSVParse} disabled={!csvInput.trim()}>
+                                    <FileSpreadsheet size={16} /> Parse CSV & Start Test
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 )}

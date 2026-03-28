@@ -232,25 +232,46 @@ const Dashboard = () => {
                     <table className="recent-table">
                         <thead>
                             <tr>
-                                <th>Date</th>
+                                <th>Test Name / Date</th>
                                 <th>Score</th>
                                 <th>Marks</th>
                                 <th>Accuracy</th>
                                 <th>Time</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             {history.slice(0, 10).map((h, i) => (
                                 <tr key={i}>
-                                    <td>{formatDate(h.date)}</td>
-                                    <td>{h.correct}/{h.total}</td>
-                                    <td className={h.totalMarks < 0 ? 'text-danger' : ''}>{h.totalMarks?.toFixed(1) || '—'}</td>
+                                    <td>
+                                        <div style={{ fontWeight: 600, color: 'white', marginBottom: '0.2rem' }}>
+                                            {h.testName || 'Attempted Test'}
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>
+                                            {formatDate(h.date)}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{h.correct}<span style={{ fontSize: '0.85rem', opacity: 0.6 }}>/{h.total}</span></div>
+                                    </td>
+                                    <td className={h.totalMarks < 0 ? 'text-danger' : 'text-success'} style={{ fontWeight: 600 }}>
+                                        {h.totalMarks?.toFixed(1) || '—'}
+                                    </td>
                                     <td>
                                         <span className={`pct-badge ${h.percentage >= 70 ? 'good' : h.percentage >= 40 ? 'avg' : 'low'}`}>
                                             {(h.percentage || 0).toFixed(0)}%
                                         </span>
                                     </td>
                                     <td>{formatDuration(h.totalTime || 0)}</td>
+                                    <td>
+                                        <Button 
+                                            variant="outline" 
+                                            style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                                            onClick={() => navigate(`/results/${h.id}`)}
+                                        >
+                                            Review
+                                        </Button>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

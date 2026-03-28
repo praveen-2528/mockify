@@ -5,7 +5,7 @@ import { useRoom } from '../context/RoomContext';
 import { saveExam } from '../utils/storage';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import { Clock, ChevronLeft, ChevronRight, CheckCircle, XCircle, List, Play, Pause, SaveAll, Bookmark, Save, Users, Pencil, Eye, EyeOff } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, CheckCircle, XCircle, List, Play, Pause, SaveAll, Bookmark, Save, Users, Pencil, Eye, EyeOff } from 'lucide-react';
 import FriendlyChat from '../components/FriendlyChat';
 import WritingPad from '../components/WritingPad';
 import VoiceChat from '../components/VoiceChat';
@@ -19,7 +19,8 @@ const Test = () => {
         if (savedTimeLeft) return savedTimeLeft;
         return examType === 'ssc' ? 60 * 60 : 120 * 60;
     });
-    const [showPalette, setShowPalette] = useState(false);
+    const [showPalette, setShowPalette] = useState(window.innerWidth > 768);
+    const [paletteCollapsed, setPaletteCollapsed] = useState(window.innerWidth <= 768);
     const [isPaused, setIsPaused] = useState(false);
     const [saveToast, setSaveToast] = useState(false);
     const [showPad, setShowPad] = useState(false);
@@ -529,27 +530,17 @@ const Test = () => {
                             </div>
                         </div>
                     </Card>
-
-                    {/* Writing Pad */}
-                    {showPad && (
-                        <div className="writing-pad-panel">
-                            <WritingPad
-                                questionIndex={currentQuestionIndex}
-                                isShared={isMultiplayer && padShared && (isFriendly ? friendlyRevealed : true)}
-                                socket={room.socket}
-                                roomCode={roomCode}
-                                playerColor={isFriendly ? '#a5b4fc' : undefined}
-                                playerName={room.playerName || 'local'}
-                                onClose={() => setShowPad(false)}
-                            />
-                        </div>
-                    )}
                 </main>
 
                 {/* Sidebar / Question Palette */}
                 <aside className={`palette-sidebar glass ${showPalette ? 'show' : ''}`}>
                     <div className="palette-header">
-                        <h3>Question Palette</h3>
+                        <div className="palette-header-row">
+                            <h3>Question Palette</h3>
+                            <button className="palette-collapse-btn" onClick={() => setPaletteCollapsed(!paletteCollapsed)} title={paletteCollapsed ? 'Expand' : 'Collapse'}>
+                                {paletteCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                            </button>
+                        </div>
                         <div className="palette-stats">
                             <div className="stat">
                                 <span className="dot answered"></span> {Object.keys(answers).length} Answered
@@ -567,6 +558,7 @@ const Test = () => {
                         )}
                     </div>
 
+                    {!paletteCollapsed && (
                     <div className="palette-grid">
                         {questions.map((_, idx) => (
                             <button
@@ -583,6 +575,7 @@ const Test = () => {
                             </button>
                         ))}
                     </div>
+                    )}
 
                     <div className="palette-footer">
                         {!isMultiplayer && (
@@ -642,6 +635,19 @@ const Test = () => {
                     </aside>
                 )}
             </div>
+
+            {/* Floating Writing Pad (outside content flow) */}
+            {showPad && (
+                <WritingPad
+                    questionIndex={currentQuestionIndex}
+                    isShared={isMultiplayer && padShared && (isFriendly ? friendlyRevealed : true)}
+                    socket={room.socket}
+                    roomCode={roomCode}
+                    playerColor={isFriendly ? '#a5b4fc' : undefined}
+                    playerName={room.playerName || 'local'}
+                    onClose={() => setShowPad(false)}
+                />
+            )}
 
             {/* Friendly Chat */}
             {isFriendly && room.socket && (

@@ -8,6 +8,7 @@ export const ExamProvider = ({ children }) => {
     const [examState, setExamState] = useState({
         examType: null, // 'ssc' or 'ibps'
         testFormat: null, // 'full', 'subject', 'topic'
+        testName: null,
         questions: [],
         testStarted: false,
         currentQuestionIndex: 0,
@@ -29,6 +30,7 @@ export const ExamProvider = ({ children }) => {
         setExamState({
             examType: null,
             testFormat: null,
+            testName: null,
             questions: [],
             testStarted: false,
             currentQuestionIndex: 0,
@@ -47,6 +49,7 @@ export const ExamProvider = ({ children }) => {
         setExamState({
             examType: saved.examType,
             testFormat: saved.testFormat,
+            testName: saved.testName || null,
             questions: saved.questions,
             testStarted: true,
             currentQuestionIndex: saved.currentQuestionIndex || 0,

@@ -27,6 +27,7 @@ export const RoomProvider = ({ children }) => {
         started: false,
         examType: null,
         testFormat: null,
+        testName: null,
         results: [],
         allSubmitted: false,
         totalParticipants: 0,
@@ -171,11 +172,11 @@ export const RoomProvider = ({ children }) => {
         });
     }, []);
 
-    const createRoom = useCallback(async ({ hostName, examType, testFormat, questions, roomMode }) => {
+    const createRoom = useCallback(async ({ hostName, examType, testFormat, questions, roomMode, testName }) => {
         const s = await ensureConnected();
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => reject(new Error('Room creation timed out.')), 8000);
-            s.emit('createRoom', { hostName, examType, testFormat, questions, roomMode }, (response) => {
+            s.emit('createRoom', { hostName, examType, testFormat, questions, roomMode, testName }, (response) => {
                 clearTimeout(timeout);
                 if (response.success) {
                     setRoomState(prev => ({
@@ -187,6 +188,7 @@ export const RoomProvider = ({ children }) => {
                         roomMode,
                         examType,
                         testFormat,
+                        testName,
                         participants: response.room.participants,
                         started: false,
                         error: null,
@@ -214,8 +216,10 @@ export const RoomProvider = ({ children }) => {
                         roomMode: response.room.roomMode,
                         examType: response.room.examType,
                         testFormat: response.room.testFormat,
+                        testName: response.room.testName,
                         participants: response.room.participants,
-                        started: false,
+                        started: response.room.started,
+                        currentQuestionIndex: response.room.currentQuestionIndex || 0,
                         error: null,
                     }));
                     resolve(response);

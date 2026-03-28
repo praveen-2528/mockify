@@ -15,10 +15,16 @@ export function parseCSVString(csvString, defaults = {}) {
     });
 
     if (result.errors.length > 0) {
-        return { questions: [], errors: result.errors.map(e => e.message) };
+        return { testName: defaults.testName || 'Untitled Test', questions: [], errors: result.errors.map(e => e.message) };
     }
 
-    return normalizeRows(result.data, defaults);
+    let testName = defaults.testName || 'Generated Test';
+    if (result.data.length > 0 && result.data[0].test_name) {
+        testName = result.data[0].test_name.toString().trim() || testName;
+    }
+
+    const { questions, errors } = normalizeRows(result.data, defaults);
+    return { testName, questions, errors };
 }
 
 /**

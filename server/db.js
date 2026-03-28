@@ -43,7 +43,15 @@ db.exec(`
 
     CREATE INDEX IF NOT EXISTS idx_history_user ON test_history(user_id);
     CREATE INDEX IF NOT EXISTS idx_history_date ON test_history(created_at);
+`);
 
+// ── Migration: Add detailed history columns safely ──
+try { db.exec("ALTER TABLE test_history ADD COLUMN test_name TEXT DEFAULT 'Untitled Test'"); } catch (e) { /* ignore */ }
+try { db.exec("ALTER TABLE test_history ADD COLUMN questions TEXT"); } catch (e) { /* ignore */ }
+try { db.exec("ALTER TABLE test_history ADD COLUMN answers TEXT"); } catch (e) { /* ignore */ }
+try { db.exec("ALTER TABLE test_history ADD COLUMN time_spent TEXT"); } catch (e) { /* ignore */ }
+
+db.exec(`
     CREATE TABLE IF NOT EXISTS mock_tests (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,

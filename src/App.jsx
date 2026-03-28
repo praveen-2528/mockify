@@ -17,6 +17,8 @@ import QuestionBank from './pages/QuestionBank';
 import MockBuilder from './pages/MockBuilder';
 import AIGenerator from './pages/AIGenerator';
 import Friends from './pages/Friends';
+import FormulaBook from './pages/FormulaBook';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './App.css';
 
 const ProtectedRoute = ({ children }) => {
@@ -36,7 +38,8 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/" element={<ProtectedRoute><Setup /></ProtectedRoute>} />
       <Route path="/test" element={<ProtectedRoute><Test /></ProtectedRoute>} />
-      <Route path="/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />
+      <Route path="/results" element={<ProtectedRoute><ErrorBoundary><Results /></ErrorBoundary></ProtectedRoute>} />
+      <Route path="/results/:historyId" element={<ProtectedRoute><ErrorBoundary><Results /></ErrorBoundary></ProtectedRoute>} />
       <Route path="/lobby" element={<ProtectedRoute><Lobby /></ProtectedRoute>} />
       <Route path="/saved" element={<ProtectedRoute><SavedExams /></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />
@@ -47,6 +50,7 @@ function AppRoutes() {
       <Route path="/mock-builder" element={<ProtectedRoute><MockBuilder /></ProtectedRoute>} />
       <Route path="/ai-generator" element={<ProtectedRoute><AIGenerator /></ProtectedRoute>} />
       <Route path="/friends" element={<ProtectedRoute><Friends /></ProtectedRoute>} />
+      <Route path="/formulas" element={<ProtectedRoute><FormulaBook /></ProtectedRoute>} />
     </Routes>
   );
 }
